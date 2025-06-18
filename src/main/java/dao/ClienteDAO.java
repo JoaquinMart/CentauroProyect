@@ -163,7 +163,10 @@ public class ClienteDAO {
                         rs.getDouble("venta"),
                         rs.getDouble("monto"),
                         rs.getDouble("saldo"),
-                        rs.getString("observacion")
+                        rs.getString("observacion"),
+                        rs.getDouble("neto"),
+                        rs.getDouble("iva"),
+                        rs.getDouble("otros")
                 );
                 movimientos.add(movimiento);
             }

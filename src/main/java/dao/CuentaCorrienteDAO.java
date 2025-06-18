@@ -16,7 +16,7 @@ public class CuentaCorrienteDAO {
     }
 
     public void crearTransaccion(CuentaCorriente cuentaCorriente) {
-        String query = "INSERT INTO cuenta_corriente(cliente_id, proveedor_id, fecha, tipo, comprobante, venta, monto, saldo, observacion) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT INTO cuenta_corriente(cliente_id, proveedor_id, fecha, tipo, comprobante, neto, iva, otros, venta, monto, saldo, observacion) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setObject(1, cuentaCorriente.getClienteId(), java.sql.Types.INTEGER);
@@ -24,10 +24,13 @@ public class CuentaCorrienteDAO {
             pstmt.setDate(3, Date.valueOf(cuentaCorriente.getFecha()));
             pstmt.setString(4, cuentaCorriente.getTipo());
             pstmt.setString(5, cuentaCorriente.getComprobante());
-            pstmt.setDouble(6, cuentaCorriente.getVenta());
-            pstmt.setDouble(7, cuentaCorriente.getMonto());
-            pstmt.setDouble(8, cuentaCorriente.getSaldo());
-            pstmt.setString(9, cuentaCorriente.getObservacion());
+            pstmt.setDouble(6, cuentaCorriente.getNeto());
+            pstmt.setDouble(7, cuentaCorriente.getIva());
+            pstmt.setDouble(8, cuentaCorriente.getOtros());
+            pstmt.setDouble(9, cuentaCorriente.getVenta());
+            pstmt.setDouble(10, cuentaCorriente.getMonto());
+            pstmt.setDouble(11, cuentaCorriente.getSaldo());
+            pstmt.setString(12, cuentaCorriente.getObservacion());
 
             int filas = pstmt.executeUpdate();
 
@@ -71,8 +74,12 @@ public class CuentaCorrienteDAO {
                 double monto = rs.getDouble("monto");
                 double saldo = rs.getDouble("saldo");
                 String observacion = rs.getString("observacion");
+                double neto = rs.getDouble("neto");
+                double iva = rs.getDouble("iva");
+                double otros = rs.getDouble("otros");
 
-                CuentaCorriente cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion);
+                CuentaCorriente cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo,
+                        observacion, neto, iva, otros);
                 cuenta.setClienteId(clienteId);
 
                 // Cargar comprobantes asociados
@@ -102,8 +109,12 @@ public class CuentaCorrienteDAO {
                 double monto = rs.getDouble("monto");
                 double saldo = rs.getDouble("saldo");
                 String observacion = rs.getString("observacion");
+                double neto = rs.getDouble("neto");
+                double iva = rs.getDouble("iva");
+                double otros = rs.getDouble("otros");
 
-                CuentaCorriente cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion);
+                CuentaCorriente cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo,
+                        observacion, neto, iva, otros);
                 cuenta.setProveedorId(proveedorId);
 
                 // Cargar comprobantes asociados
@@ -136,8 +147,11 @@ public class CuentaCorrienteDAO {
                 double monto = rs.getDouble("monto");
                 double saldo = rs.getDouble("saldo");
                 String observacion = rs.getString("observacion");
+                double neto = rs.getDouble("neto");
+                double iva = rs.getDouble("iva");
+                double otros = rs.getDouble("otros");
 
-                cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion);
+                cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion, neto, iva, otros);
 
                 int clienteId = rs.getInt("cliente_id");
                 cuenta.setClienteId(clienteId);
@@ -181,7 +195,8 @@ public class CuentaCorrienteDAO {
     }
 
     public void actualizarTransaccion(CuentaCorriente cuentaCorriente) {
-        String query = "UPDATE cuenta_corriente SET cliente_id = ?, proveedor_id = ?, fecha = ?, tipo = ?, comprobante = ?, venta = ?, monto = ?, saldo = ?, observacion = ? WHERE id = ?";
+        String query = "UPDATE cuenta_corriente SET cliente_id = ?, proveedor_id = ?, fecha = ?, tipo = ?, " +
+                "comprobante = ?, venta = ?, monto = ?, saldo = ?, observacion = ?, neto = ?, iva = ?, otros = ? WHERE id = ?";
 
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setObject(1, cuentaCorriente.getClienteId(), java.sql.Types.INTEGER);
@@ -193,7 +208,10 @@ public class CuentaCorrienteDAO {
             pstmt.setDouble(7, cuentaCorriente.getMonto());
             pstmt.setDouble(8, cuentaCorriente.getSaldo());
             pstmt.setString(9, cuentaCorriente.getObservacion());
-            pstmt.setInt(10, cuentaCorriente.getId());
+            pstmt.setDouble(10, cuentaCorriente.getNeto());
+            pstmt.setDouble(11, cuentaCorriente.getIva());
+            pstmt.setDouble(12, cuentaCorriente.getOtros());
+            pstmt.setInt(13, cuentaCorriente.getId());
 
             int filas = pstmt.executeUpdate();
             if (filas > 0) {
@@ -224,8 +242,12 @@ public class CuentaCorrienteDAO {
                 double monto = rs.getDouble("monto");
                 double saldo = rs.getDouble("saldo");
                 String observacion = rs.getString("observacion");
+                double neto = rs.getDouble("neto");
+                double iva = rs.getDouble("iva");
+                double otros = rs.getDouble("otros");
 
-                CuentaCorriente cc = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion);
+                CuentaCorriente cc = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion,
+                        neto, iva, otros);
                 cc.setClienteId(clienteId);
 
                 List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);
@@ -258,8 +280,12 @@ public class CuentaCorrienteDAO {
                 double monto = rs.getDouble("monto");
                 double saldo = rs.getDouble("saldo");
                 String observacion = rs.getString("observacion");
+                double neto = rs.getDouble("neto");
+                double iva = rs.getDouble("iva");
+                double otros = rs.getDouble("otros");
 
-                CuentaCorriente cc = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion);
+                CuentaCorriente cc = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo, observacion,
+                        neto, iva, otros);
                 cc.setProveedorId(proveedorId);
 
                 List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);

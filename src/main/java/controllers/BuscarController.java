@@ -1,10 +1,8 @@
 package controllers;
 
-
 import javafx.scene.text.Text;
 import model.*;
 import dao.*;
-
 
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -18,15 +16,16 @@ import javafx.stage.Stage;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class  BuscarController {
+public class BuscarController {
 
-    private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/M/yyyy"); // si usas formatter
+    private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/M/yyyy");
 
     public void handleBotonBuscar(
-        TextField buscarNombreField,
-        TableView<CuentaCorriente> tablaCuentas,
-        TextFlow resumenClienteText,
-        Alert alerta
+            TextField buscarNombreField,
+            TableView<CuentaCorriente> tablaCuentas, // Ahora recibimos la tabla de clientes
+            TableView<CuentaCorriente> tablaProveedores, // Y la nueva tabla de proveedores
+            TextFlow resumenClienteText,
+            Alert alerta
     ) {
         String nombre = buscarNombreField.getText().trim();
         if (nombre.isEmpty()) {
@@ -36,9 +35,16 @@ public class  BuscarController {
             return;
         }
 
-        mostrarCuentasYResumen(nombre, tablaCuentas, resumenClienteText);
+        // LLAMAR AL MÉTODO ACTUALIZADO
+        mostrarCuentasYResumen(nombre, tablaCuentas, tablaProveedores, resumenClienteText); // Pasa ambas tablas
 
-        if (!tablaCuentas.getItems().isEmpty()) {
+        // El setRowFactory debe aplicarse a la tabla que esté actualmente visible o a ambas
+        // Es mejor hacerlo dentro de mostrarCuentasYResumen para asegurarse de que se aplica a la tabla correcta
+        // o aplicar a ambas y que se active solo cuando la tabla esté visible.
+        // Por simplicidad, lo moveremos o lo haremos específico en mostrarCuentasYResumen.
+        // Por ahora, lo dejaré comentado aquí, lo ajustaremos en el método.
+        /*
+        if (!tablaCuentas.getItems().isEmpty()) { // Esto solo se aplica a tablaCuentas
             tablaCuentas.setRowFactory(tv -> {
                 TableRow<CuentaCorriente> row = new TableRow<>();
                 row.setOnMouseClicked(event -> {
@@ -50,11 +56,11 @@ public class  BuscarController {
                 return row;
             });
         }
+        */
 
         buscarNombreField.clear();
     }
 
-    // Puedes implementar mostrarVentanaComprobantes aquí, o recibir un callback para eso.
     private void mostrarVentanaComprobantes(int movimientoId, String fecha, String persona) {
         ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
         List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
@@ -73,11 +79,13 @@ public class  BuscarController {
         TableColumn<Comprobante, Number> totalCol = new TableColumn<>("Precio Unitario");
         totalCol.setCellValueFactory(data -> {
             int cantidad = data.getValue().getCantidad();
-            double precio = data.getValue().getPrecio();
+            // Asumiendo que el precio en Comprobante es el precio total del item (cantidad * precio_unitario)
+            // Si precio es el precio unitario, entonces sería: return new SimpleDoubleProperty(data.getValue().getPrecio());
+            double precio = data.getValue().getPrecio(); // Precio total del item
             return new javafx.beans.property.SimpleDoubleProperty(precio / cantidad);
         });
 
-        TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Total");
+        TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Total"); // Este es el total del item
         precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
 
         tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, totalCol, precioCol);
@@ -85,7 +93,7 @@ public class  BuscarController {
         tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         double totalGeneral = comprobantes.stream()
-                .mapToDouble(c -> c.getPrecio())
+                .mapToDouble(c -> c.getPrecio()) // Suma el precio total de cada comprobante
                 .sum();
 
         Label totalLabel = new Label(String.format("TOTAL: $ %.2f", totalGeneral));
@@ -100,15 +108,30 @@ public class  BuscarController {
         ventana.showAndWait();
     }
 
-    public void mostrarCuentasYResumen(String nombre, TableView<CuentaCorriente> tablaCuentas, TextFlow resumenClienteText) {
+    public void mostrarCuentasYResumen(String nombre, TableView<CuentaCorriente> tablaCuentas, TableView<CuentaCorriente> tablaProveedores, TextFlow resumenClienteText) {
         ClienteDAO clienteDAO = new ClienteDAO();
         ProveedorDAO proveedorDAO = new ProveedorDAO();
         CuentaCorrienteDAO cuentaDAO = new CuentaCorrienteDAO();
+
+        // Limpiar ambas tablas al inicio de la búsqueda
+        tablaCuentas.getItems().clear();
+        tablaProveedores.getItems().clear();
+
+        // Ocultar ambas tablas al inicio y se mostrará la que corresponda
+        tablaCuentas.setVisible(false);
+        tablaCuentas.setManaged(false);
+        tablaProveedores.setVisible(false);
+        tablaProveedores.setManaged(false);
+
 
         Cliente cliente = clienteDAO.obtenerClientePorNombre(nombre);
         if (cliente != null) {
             List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorClienteId(cliente.getId());
             tablaCuentas.getItems().setAll(cuentas);
+
+            // Mostrar solo la tabla de clientes
+            tablaCuentas.setVisible(true);
+            tablaCuentas.setManaged(true);
 
             Text clienteLabel = new Text("Cliente: ");
             clienteLabel.setStyle("-fx-font-weight: bold");
@@ -130,11 +153,28 @@ public class  BuscarController {
                     razonLabel, razonText,
                     cuitLabel, cuitText
             );
+
+            // Añadir el manejador de doble clic para la tabla de clientes
+            tablaCuentas.setRowFactory(tv -> {
+                TableRow<CuentaCorriente> row = new TableRow<>();
+                row.setOnMouseClicked(event -> {
+                    if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                        CuentaCorriente cuentaSeleccionada = row.getItem();
+                        mostrarVentanaComprobantes(cuentaSeleccionada.getId(), cuentaSeleccionada.getFecha().format(formatter), nombre);
+                    }
+                });
+                return row;
+            });
+
         } else {
             Proveedor proveedor = proveedorDAO.obtenerProveedorPorNombre(nombre);
             if (proveedor != null) {
                 List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorProveedorId(proveedor.getId());
-                tablaCuentas.getItems().setAll(cuentas);
+                tablaProveedores.getItems().setAll(cuentas);
+
+                // Mostrar solo la tabla de proveedores
+                tablaProveedores.setVisible(true);
+                tablaProveedores.setManaged(true);
 
                 Text proveedorLabel = new Text("Proveedor: ");
                 proveedorLabel.setStyle("-fx-font-weight: bold");
@@ -156,8 +196,25 @@ public class  BuscarController {
                         razonLabel, razonText,
                         cuitLabel, cuitText
                 );
+
+                // Añadir el manejador de doble clic para la tabla de proveedores
+                tablaProveedores.setRowFactory(tv -> {
+                    TableRow<CuentaCorriente> row = new TableRow<>();
+                    row.setOnMouseClicked(event -> {
+                        if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                            CuentaCorriente cuentaSeleccionada = row.getItem();
+                            mostrarVentanaComprobantes(cuentaSeleccionada.getId(), cuentaSeleccionada.getFecha().format(formatter), nombre);
+                        }
+                    });
+                    return row;
+                });
+
+            } else {
+                // Si no se encuentra ni cliente ni proveedor
+                tablaCuentas.getItems().clear(); // Asegúrate de que ambas estén vacías
+                tablaProveedores.getItems().clear();
+                resumenClienteText.getChildren().setAll(new Text("No se encontró cliente/proveedor con el nombre '" + nombre + "'"));
             }
         }
     }
-
 }

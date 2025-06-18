@@ -41,7 +41,7 @@ public class AppController {
         stage.getIcons().add(new Image("file:src/main/resources/icono.jpg"));
 
         ComboBox<String> tipoCombo = new ComboBox<>();
-        tipoCombo.getItems().addAll("Cliente", "Proveedor", "Cuenta Corriente", "Remito", "Producto");
+        tipoCombo.getItems().addAll("Cliente", "Proveedor", "Cuenta Corriente", "Remito", "Producto", "Remito Proveedor");
         tipoCombo.setPromptText("Tipo (Cliente)");
 
         ComboBox<String> accionCombo = new ComboBox<>();
@@ -73,20 +73,28 @@ public class AppController {
 
         // Campos Cuenta Corriente
         TextField nombreCuentaField = new TextField(); nombreCuentaField.setPromptText("Nombre de Cliente / Proveedor");
-        TextField fechaField = new TextField(); fechaField.setPromptText("Fecha (Cuenta Corriente)");
-        TextField comprobanteField = new TextField(); comprobanteField.setPromptText("Numero Remito (Cuenta Corriente)");
-        TextField tipoField = new TextField(); tipoField.setPromptText("Tipo (Cuenta Corriente)");
-        TextField ventaField = new TextField(); ventaField.setPromptText("Venta (Cuenta Corriente)");
-        TextField montoField = new TextField(); montoField.setPromptText("Pago (Cuenta Corriente)");
-        TextField saldoField = new TextField(); saldoField.setPromptText("Saldo (Cuenta Corriente)");
-        TextField observacionField = new TextField(); observacionField.setPromptText("Observacion (Cuenta Corriente)");
+        TextField fechaField = new TextField(); fechaField.setPromptText("Fecha del remito");
+        TextField comprobanteField = new TextField(); comprobanteField.setPromptText("Numero Remito");
+        TextField tipoField = new TextField(); tipoField.setPromptText("Tipo");
+        TextField netoField = new TextField(); netoField.setPromptText("Neto");
+        TextField ivaField = new TextField(); ivaField.setPromptText("IVA, cliente dejar en 0");
+        TextField otrosField = new TextField(); otrosField.setPromptText("Otros cliente dejar en 0");
+        TextField montoField = new TextField(); montoField.setPromptText("Pago");
+        TextField saldoField = new TextField(); saldoField.setPromptText("Saldo");
+        TextField observacionField = new TextField(); observacionField.setPromptText("Observacion");
 
-        // Campor Comprobante
+        // Campos Comprobante
         TextField remitoField = new TextField(); remitoField.setPromptText("Numero Remito");
         TextField codProdu = new TextField(); codProdu.setPromptText("Codigo");
         TextField cantidadField = new TextField(); cantidadField.setPromptText("Cantidad");
 
-        // Campor Producto
+        // Campos Comprobante Proveedor
+        TextField remitoFieldP = new TextField(); remitoFieldP.setPromptText("Numero Remito");
+        TextField nomProduFieldP = new TextField(); nomProduFieldP.setPromptText("Producto");
+        TextField cantidadFieldP = new TextField(); cantidadFieldP.setPromptText("Cantidad");
+        TextField precioUnitarioPField = new TextField(); precioUnitarioPField.setPromptText("Precio");
+
+        // Campos Producto
         TextField codigoField = new TextField(); codigoField.setPromptText("Codigo del producto");
         TextField nomProduField = new TextField(); nomProduField.setPromptText("Producto");
         TextField preioUnitarioField = new TextField(); preioUnitarioField.setPromptText("Precio Unitario");
@@ -102,11 +110,16 @@ public class AppController {
         );
 
         List<TextField> textosCuentaCorriente = List.of(
-                nombreCuentaField, fechaField, comprobanteField, tipoField, ventaField, montoField, observacionField
+                nombreCuentaField, fechaField, comprobanteField, tipoField, netoField, ivaField, otrosField,
+                montoField, observacionField
         );
 
         List<TextField> textosComprobante = List.of(
                 remitoField, codProdu, cantidadField
+        );
+
+        List<TextField> textosFacturas = List.of(
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
         );
 
         List<TextField> textosProductos = List.of(
@@ -159,20 +172,80 @@ public class AppController {
             };
             return cell;
         });
-        obsCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.2));
+        obsCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.1));
         obsCol.getStyleClass().add("custom-table-column"); // <--- AÑADE ESTO
 
         tablaCuentas.getColumns().addAll(fechaCol, numCol, tipoCol, ventaCol, montoCol, saldoCol, obsCol);
         tablaCuentas.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-//
-//        TableColumn<Comprobante, Number> cantidadCol = new TableColumn<>("Cantidad");
-//        cantidadCol.setCellValueFactory(data -> new javafx.beans.property.SimpleIntegerProperty(data.getValue().getCantidad()));
-//
-//        TableColumn<Comprobante, String> nombreCol = new TableColumn<>("Nombre");
-//        nombreCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getNombre()));
-//
-//        TableColumn<Comprobante, Number> precioCol = new TableColumn<>("Precio");
-//        precioCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getPrecio()));
+
+        // TABLA DE PROVEEDORES
+
+        TableView<CuentaCorriente> tablaProveedores = new TableView<>();
+
+        TableColumn<CuentaCorriente, String> fechaProvCol = new TableColumn<>("Fecha");
+        fechaProvCol.setCellValueFactory(data -> {
+            LocalDate fecha = data.getValue().getFecha();
+            String fechaStr = (fecha != null) ? fecha.format(formatter) : "";
+            return new javafx.beans.property.SimpleStringProperty(fechaStr);
+        });
+        fechaProvCol.getStyleClass().add("custom-table-column");
+        TableColumn<CuentaCorriente, String> numProvCol = new TableColumn<>("N° Remito");
+        numProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getComprobante()));
+        numProvCol.getStyleClass().add("custom-table-column");
+        TableColumn<CuentaCorriente, String> tipoProvCol = new TableColumn<>("Tipo");
+        tipoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getTipo()));
+        tipoProvCol.getStyleClass().add("custom-table-column");
+
+        // *** AQUI VAN LOS 3 CAMPOS NUEVOS PARA PROVEEDORES ***
+        TableColumn<CuentaCorriente, Number> netoProvCol = new TableColumn<>("Neto");
+        netoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getNeto()));
+        netoProvCol.getStyleClass().add("custom-table-column");
+
+        TableColumn<CuentaCorriente, Number> ivaProvCol = new TableColumn<>("IVA");
+        ivaProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getIva()));
+        ivaProvCol.getStyleClass().add("custom-table-column");
+
+        TableColumn<CuentaCorriente, Number> otrosProvCol = new TableColumn<>("Otros");
+        otrosProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getOtros()));
+        otrosProvCol.getStyleClass().add("custom-table-column");
+        // ******************************************************
+
+        TableColumn<CuentaCorriente, Number> ventaProvCol = new TableColumn<>("Venta");
+        ventaProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getVenta()));
+        ventaProvCol.getStyleClass().add("custom-table-column");
+        TableColumn<CuentaCorriente, Number> montoProvCol = new TableColumn<>("Pago");
+        montoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getMonto()));
+        montoProvCol.getStyleClass().add("custom-table-column");
+        TableColumn<CuentaCorriente, Number> saldoProvCol = new TableColumn<>("Saldo");
+        saldoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getSaldo()));
+        saldoProvCol.getStyleClass().add("custom-table-column");
+
+        TableColumn<CuentaCorriente, String> obsProvCol = new TableColumn<>("Observación");
+        obsProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getObservacion()));
+        obsProvCol.setCellFactory(tc -> {
+            TableCell<CuentaCorriente, String> cell = new TableCell<>() {
+                private final Text text = new Text();
+                {
+                    text.wrappingWidthProperty().bind(obsProvCol.widthProperty().subtract(10));
+                    setGraphic(text);
+                }
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        text.setText("");
+                    } else {
+                        text.setText(item);
+                    }
+                }
+            };
+            return cell;
+        });
+        obsProvCol.prefWidthProperty().bind(tablaProveedores.widthProperty().multiply(0.1));
+        obsProvCol.getStyleClass().add("custom-table-column");
+
+        tablaProveedores.getColumns().addAll(fechaProvCol, numProvCol, tipoProvCol, netoProvCol, ivaProvCol, otrosProvCol, ventaProvCol, montoProvCol, saldoProvCol, obsProvCol);
+        tablaProveedores.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         // Botones
         botonEjecutar = new Button("Ejecutar");
@@ -186,9 +259,10 @@ public class AppController {
                 codigoPostalField, telefonoField, cuitField, nombreField,
                 condicionField, altaField, proveedorField, categoriaField,
                 contactoField, nombreCuentaField, fechaField, comprobanteField,
-                tipoField, ventaField, montoField, saldoField, observacionField,
-                remitoField, codProdu, cantidadField,
-                codigoField, nomProduField, preioUnitarioField
+                tipoField, netoField, ivaField, otrosField, montoField,
+                saldoField, observacionField, remitoField, codProdu, cantidadField,
+                codigoField, nomProduField, preioUnitarioField, remitoFieldP,
+                nomProduFieldP, cantidadFieldP, precioUnitarioPField
         };
 
         for (TextField tf : textFields) {
@@ -214,20 +288,28 @@ public class AppController {
         // --- Campos de cuenta corriente ---
         VBox camposCuentaCorriente = new VBox(10,
                 nombreCuentaField, fechaField, comprobanteField, tipoField,
-                ventaField, montoField, observacionField
+                netoField, ivaField, otrosField,
+                montoField, observacionField
         );
         VBox.setVgrow(camposCuentaCorriente, Priority.ALWAYS);
 
-        // --- Campos de cuenta corriente ---
+        // --- Campos comprobante ---
         VBox camposComprobante = new VBox(10,
                 remitoField, codProdu, nombreProductoPreviewLabel, cantidadField
         );
         VBox.setVgrow(camposComprobante, Priority.ALWAYS);
 
+        // --- Campos factura proveedores ---
+        VBox camposProveedores = new VBox(10,
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
+        );
+        VBox.setVgrow(camposProveedores, Priority.ALWAYS);
+
         // --- Campos de productos ---
         VBox camposProductos = new VBox(10,
                 codigoField, nomProduField, preioUnitarioField
         );
+
         VBox.setVgrow(camposProductos, Priority.ALWAYS);
 
         // --- Listener para el campo codProdu ---
@@ -260,36 +342,40 @@ public class AppController {
 
         tipoCombo.setOnAction(e -> actualizarCamposFormulario(
                 tipoCombo, accionCombo,
-                camposNormales, camposCuentaCorriente, camposComprobante, camposProductos,
+                camposNormales, camposCuentaCorriente, camposComprobante, camposProductos, camposProveedores,
                 nombreField, razonField, domicilioField, localidadField, codigoPostalField, telefonoField,
                 cuitField, condicionField, altaField, proveedorField, categoriaField, contactoField,
-                nombreCuentaField, fechaField, comprobanteField, tipoField, ventaField, montoField, saldoField,
-                observacionField, cantidadField, remitoField, codProdu, // Llamada con codProdu
-                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos,
-                codigoField, nomProduField, preioUnitarioField
+                nombreCuentaField, fechaField, comprobanteField, tipoField, montoField, saldoField,
+                observacionField, cantidadField, remitoField, codProdu,
+                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
+                codigoField, nomProduField, preioUnitarioField,
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
         ));
 
         accionCombo.setOnAction(e -> actualizarCamposFormulario(
                 tipoCombo, accionCombo,
-                camposNormales, camposCuentaCorriente, camposComprobante, camposProductos,
+                camposNormales, camposCuentaCorriente, camposComprobante, camposProductos, camposProveedores,
                 nombreField, razonField, domicilioField, localidadField, codigoPostalField, telefonoField,
                 cuitField, condicionField, altaField, proveedorField, categoriaField, contactoField,
-                nombreCuentaField, fechaField, comprobanteField, tipoField, ventaField, montoField, saldoField,
-                observacionField, cantidadField, remitoField, codProdu, // Llamada con codProdu
-                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos,
-                codigoField, nomProduField, preioUnitarioField
+                nombreCuentaField, fechaField, comprobanteField, tipoField, montoField, saldoField,
+                observacionField, cantidadField, remitoField, codProdu,
+                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
+                codigoField, nomProduField, preioUnitarioField,
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
         ));
 
         // Llamada inicial
         actualizarCamposFormulario(
                 tipoCombo, accionCombo,
-                camposNormales, camposCuentaCorriente, camposComprobante, camposProductos,
+                camposNormales, camposCuentaCorriente, camposComprobante, camposProductos, camposProveedores,
                 nombreField, razonField, domicilioField, localidadField, codigoPostalField, telefonoField,
                 cuitField, condicionField, altaField, proveedorField, categoriaField, contactoField,
-                nombreCuentaField, fechaField, comprobanteField, tipoField, ventaField, montoField, saldoField,
+                nombreCuentaField, fechaField, comprobanteField, tipoField, montoField, saldoField,
                 observacionField, cantidadField, remitoField, codProdu,
-                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos,
-                codigoField, nomProduField, preioUnitarioField);
+                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
+                codigoField, nomProduField, preioUnitarioField,
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
+        );
 
         EjecutarController controlador = new EjecutarController(formatter, alerta, info, advertencia);
         botonEjecutar.setOnAction(e -> {
@@ -298,15 +384,16 @@ public class AppController {
                     nombreField, razonField, domicilioField, localidadField, codigoPostalField,
                     telefonoField, cuitField, condicionField, altaField, proveedorField,
                     categoriaField, contactoField, codigoField, nomProduField, preioUnitarioField,
-                    nombreCuentaField, fechaField, comprobanteField, tipoField, ventaField, montoField,
-                    observacionField, cantidadField, remitoField, codProdu,
-                    textFields, tablaCuentas, resumenClienteText
+                    nombreCuentaField, fechaField, comprobanteField, tipoField, netoField, ivaField,
+                    otrosField, montoField, observacionField, cantidadField, remitoField,
+                    codProdu, textFields, tablaCuentas, tablaProveedores, resumenClienteText,
+                    remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
             );
         });
 
         BuscarController controladorBuscar = new BuscarController();
         botonBuscar.setOnAction(e -> {
-            controladorBuscar.handleBotonBuscar(buscarNombreField, tablaCuentas, resumenClienteText, alerta);
+            controladorBuscar.handleBotonBuscar(buscarNombreField, tablaCuentas, tablaProveedores, resumenClienteText, alerta);
         });
 
         botonImprimir.setOnAction(e -> ImprimirController.imprimirSeleccion(imprimirCombo));
@@ -366,7 +453,7 @@ public class AppController {
         botonesBox.setAlignment(Pos.CENTER_LEFT);
 
         // --- Campos dinámicos (cuenta corriente / normal / comprobante) ---
-        StackPane camposBox = new StackPane(camposCuentaCorriente, camposNormales, camposComprobante, camposProductos);
+        StackPane camposBox = new StackPane(camposCuentaCorriente, camposNormales, camposComprobante, camposProductos, camposProveedores);
         camposBox.setId("dynamic-fields-stack"); // Un ID ya que es un StackPane único con campos dinámicos
         VBox.setVgrow(camposBox, Priority.ALWAYS);
         camposBox.setMaxHeight(Double.MAX_VALUE);
@@ -381,14 +468,26 @@ public class AppController {
         HBox.setHgrow(formulario, Priority.ALWAYS);
 
         // --- Tablas (DERECHA) ---
-        tablaCuentas.setMaxHeight(Double.MAX_VALUE);
-        tablaCuentas.getStyleClass().add("main-table"); // Clase para la tabla principal
-        VBox.setVgrow(tablaCuentas, Priority.ALWAYS);
+        // AHORA CREA UN STACKPANE PARA LAS TABLAS Y CONTROLA SU VISIBILIDAD
+        StackPane tablasStackPane = new StackPane(tablaCuentas, tablaProveedores); // Agrega ambas tablas al StackPane
+        tablasStackPane.setMaxHeight(Double.MAX_VALUE); // Permitir que el StackPane crezca todo lo posible
+        tablasStackPane.setMaxWidth(Double.MAX_VALUE);
 
-        VBox tablasBox = new VBox(10, filaCombos2, tablaCuentas);
+        // Configura la visibilidad inicial (por defecto, muestra la tabla de clientes)
+        tablaCuentas.setVisible(true);
+        tablaCuentas.setManaged(true);
+        tablaProveedores.setVisible(false); // Ocultar la tabla de proveedores al inicio
+        tablaProveedores.setManaged(false);
+
+        // Asegúrate de que las clases CSS se apliquen a ambas tablas
+        tablaCuentas.getStyleClass().add("main-table");
+        tablaProveedores.getStyleClass().add("main-table");
+
+        VBox tablasBox = new VBox(10, filaCombos2, tablasStackPane);
         tablasBox.getStyleClass().add("tables-container"); // Contenedor de tablas
         tablasBox.setMaxWidth(Double.MAX_VALUE);
         tablasBox.setPrefWidth(1400);
+        VBox.setVgrow(tablasStackPane, Priority.ALWAYS);
         VBox.setVgrow(tablasBox, Priority.ALWAYS);
         HBox.setHgrow(tablasBox, Priority.ALWAYS);
         resumenClienteText.getStyleClass().add("client-summary-text"); // Clase para el texto de resumen
@@ -422,14 +521,16 @@ public class AppController {
     private void actualizarCamposFormulario(
             ComboBox<String> tipoCombo, ComboBox<String> accionCombo,
             VBox camposNormales, VBox camposCuentaCorriente, VBox camposComprobante, VBox camposProductos,
-            TextField nombreField, TextField razonField, TextField domicilioField, TextField localidadField,
-            TextField codigoPostalField, TextField telefonoField, TextField cuitField, TextField condicionField,
-            TextField altaField, TextField proveedorField, TextField categoriaField, TextField contactoField,
-            TextField nombreCuentaField, TextField fechaField, TextField comprobanteField, TextField tipoField,
-            TextField ventaField, TextField montoField, TextField saldoField, TextField observacionField,
+            VBox camposProveedores, TextField nombreField, TextField razonField, TextField domicilioField,
+            TextField localidadField, TextField codigoPostalField, TextField telefonoField, TextField cuitField,
+            TextField condicionField, TextField altaField, TextField proveedorField, TextField categoriaField,
+            TextField contactoField, TextField nombreCuentaField, TextField fechaField, TextField comprobanteField,
+            TextField tipoField, TextField montoField, TextField saldoField, TextField observacionField,
             TextField cantidadField, TextField remitoField, TextField codProdu, List<TextField> textosClientes,
             List<TextField> textosProveedores, List<TextField> textosCuentaCorriente, List<TextField> textosComprobante,
-            List<TextField> textosProductos, TextField codigoField, TextField nomProduField, TextField preioUnitarioField)
+            List<TextField> textosFacturas, List<TextField> textosProductos, TextField codigoField,
+            TextField nomProduField, TextField preioUnitarioField, TextField remitoFieldP, TextField nomProduFieldP,
+            TextField cantidadFieldP, TextField precioUnitarioPField)
     {
 
         String tipo = tipoCombo.getValue();
@@ -444,6 +545,8 @@ public class AppController {
         camposComprobante.setManaged(false);
         camposProductos.setVisible(false);
         camposProductos.setManaged(false);
+        camposProveedores.setVisible(false);
+        camposProveedores.setManaged(false);
 
         if (nombreProductoPreviewLabel != null) {
             nombreProductoPreviewLabel.setVisible(false);
@@ -461,6 +564,22 @@ public class AppController {
                 nodo.setManaged(true);
             }
             asignarEnterEntreCampos(textosCuentaCorriente);
+
+        } else if ("Remito Proveedor".equals(tipo)) {
+            // Mostrar campos de cuenta corriente completo
+            camposProveedores.setVisible(true);
+            camposProveedores.setManaged(true);
+
+            // Asegurar todos visibles dentro
+            for (Node nodo : camposProveedores.getChildren()) {
+                nodo.setVisible(true);
+                nodo.setManaged(true);
+            }
+            if (nombreProductoPreviewLabel != null) {
+                nombreProductoPreviewLabel.setVisible(true);
+                nombreProductoPreviewLabel.setManaged(true);
+            }
+            asignarEnterEntreCampos(textosProveedores);
 
         } else if ("Remito".equals(tipo)) {
             // Mostrar campos de cuenta corriente completo

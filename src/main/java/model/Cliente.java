@@ -19,7 +19,6 @@ public class Cliente {
     private List<String> freezer;
     private List<Comodato> comodato;
     private List<CuentaCorriente> cuentaCorrientes;
-    // private List<Mercaderia> mercaderia;
 
     // Constructor
     public Cliente(int ID, String nombre, String razonSocial, String domicilio, String localidad, String codigoPostal,

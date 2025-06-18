@@ -127,7 +127,7 @@ public class ProveedorDAO {
     // Método para obtener los movimientos de cuenta corriente de un cliente por su ID
     public List<CuentaCorriente> obtenerMovimientosPorProveedorId(int proveedorId) {
         List<CuentaCorriente> movimientos = new ArrayList<>();
-        String sql = "SELECT * FROM MovimientosCuentaCorriente WHERE cliente_id = ?";
+        String sql = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ?";
 
         try (Connection conn = ConexionMySQL.conectar();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -144,7 +144,10 @@ public class ProveedorDAO {
                         rs.getDouble("venta"),
                         rs.getDouble("monto"),
                         rs.getDouble("saldo"),
-                        rs.getString("observacion")
+                        rs.getString("observacion"),
+                        rs.getDouble("neto"),
+                        rs.getDouble("iva"),
+                        rs.getDouble("otros")
                 );
                 movimientos.add(movimiento);
             }

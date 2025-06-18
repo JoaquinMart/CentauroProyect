@@ -33,36 +33,43 @@ public class EjecutarController {
     }
 
     public void handleBotonEjecutar(
-        ComboBox<String> tipoCombo,
-        ComboBox<String> accionCombo,
-        TextField nombreField,
-        TextField razonField,
-        TextField domicilioField,
-        TextField localidadField,
-        TextField codigoPostalField,
-        TextField telefonoField,
-        TextField cuitField,
-        TextField condicionField,
-        TextField altaField,
-        TextField proveedorField,
-        TextField categoriaField,
-        TextField contactoField,
-        TextField codigoField,
-        TextField nomProduField,
-        TextField preioUnitarioField,
-        TextField nombreCuentaField,
-        TextField fechaField,
-        TextField comprobanteField,
-        TextField tipoField,
-        TextField ventaField,
-        TextField montoField,
-        TextField observacionField,
-        TextField cantidadField,
-        TextField remitoField,
-        TextField codProdu,
-        TextField[] textFields,
-        TableView<CuentaCorriente> tablaCuentas,
-        TextFlow resumenClienteText
+            ComboBox<String> tipoCombo,
+            ComboBox<String> accionCombo,
+            TextField nombreField,
+            TextField razonField,
+            TextField domicilioField,
+            TextField localidadField,
+            TextField codigoPostalField,
+            TextField telefonoField,
+            TextField cuitField,
+            TextField condicionField,
+            TextField altaField,
+            TextField proveedorField,
+            TextField categoriaField,
+            TextField contactoField,
+            TextField codigoField,
+            TextField nomProduField,
+            TextField preioUnitarioField,
+            TextField nombreCuentaField,
+            TextField fechaField,
+            TextField comprobanteField,
+            TextField tipoField,
+            TextField netoField,
+            TextField ivaField,
+            TextField otrosField,
+            TextField montoField,
+            TextField observacionField,
+            TextField cantidadField,
+            TextField remitoField,
+            TextField codProdu,
+            TextField[] textFields,
+            TableView<CuentaCorriente> tablaCuentas,
+            TableView<CuentaCorriente> tablaProveedores,
+            TextFlow resumenClienteText,
+            TextField remitoFieldP,
+            TextField nomProduFieldP,
+            TextField cantidadFieldP,
+            TextField precioUnitarioPField
     ) {
         String tipo = tipoCombo.getValue();
         String accion = accionCombo.getValue();
@@ -123,6 +130,7 @@ public class EjecutarController {
                     info.setTitle("Éxito");
                     info.setContentText("Proveedor agregado: " + p + "\n");
                     info.showAndWait();
+
                     // Limpiar todos los campos
                     for (TextField tf : textFields) {
                         tf.clear();
@@ -133,29 +141,47 @@ public class EjecutarController {
                     String fecha = getText(fechaField);
                     String comprobante = getText(comprobanteField);
                     String tipoCC = getText(tipoField);
-                    String ventaStr = getText(ventaField);
+                    String netoCC = getText(netoField);
+                    String ivaCC = getText(ivaField);
+                    String otrosCC = getText(otrosField);
                     String montoStr = getText(montoField);
                     String desc = getText(observacionField);
 
                     if (!verificarCampos(
-                            new String[]{fecha, comprobante, tipoCC, ventaStr, montoStr, nombrePersona},
-                            new String[]{"Fecha", "Comprobante", "Tipo", "Venta", "Monto", "Nombre"}
+                            new String[]{fecha, comprobante, tipoCC, netoCC, montoStr, nombrePersona},
+                            new String[]{"Fecha", "Comprobante", "Tipo", "Neto", "Monto", "Nombre"}
                     )) return;
 
                     try {
-                        double venta = Double.parseDouble(ventaStr);
+                        double neto = Double.parseDouble(netoCC);
+                        // MODIFICACIÓN AQUÍ: Parsea IVA y Otros, si están vacíos, usa 0.0
+                        double iva = ivaCC.isEmpty() ? 0.0 : Double.parseDouble(ivaCC);
+                        double otros = otrosCC.isEmpty() ? 0.0 : Double.parseDouble(otrosCC);
                         double monto = Double.parseDouble(montoStr);
                         LocalDate fechaLocalDate = LocalDate.parse(fecha, formatter);
 
-                        CuentaCorrienteDAO ccDAO = new CuentaCorrienteDAO();
+                        // Declaramos las variables que pueden cambiar su valor
+                        double valorVenta;
+                        double valorNeto;
+                        double valorIva;
+                        double valorOtros;
 
-                        CuentaCorriente cc = new CuentaCorriente(fechaLocalDate, tipoCC, comprobante, venta, monto, 0, desc);
+                        CuentaCorrienteDAO ccDAO = new CuentaCorrienteDAO();
 
                         ClienteDAO clienteDAO = new ClienteDAO();
                         Cliente cliente = clienteDAO.obtenerClientePorNombre(nombrePersona);
 
                         if (cliente != null) {
+                            valorVenta = neto;
+                            valorNeto = neto;
+                            valorIva = 0.0;
+                            valorOtros = 0.0;
+
+                            CuentaCorriente cc = new CuentaCorriente(fechaLocalDate, tipoCC, comprobante, valorVenta, monto, 0,
+                                    desc, valorNeto, valorIva, valorOtros);
+
                             cc.setClienteId(cliente.getId());
+                            cc.setProveedorId(null);
 
                             cc.setSaldo(0);
                             ccDAO.crearTransaccion(cc);
@@ -174,7 +200,7 @@ public class EjecutarController {
                             info.setContentText("Cuenta Corriente agregada al Cliente: " + cliente.getNombre());
                             info.showAndWait();
                             BuscarController buscador = new BuscarController();
-                            buscador.mostrarCuentasYResumen(nombrePersona, tablaCuentas, resumenClienteText);
+                            buscador.mostrarCuentasYResumen(nombrePersona, tablaCuentas, tablaProveedores, resumenClienteText);
                             return;
                         }
 
@@ -182,7 +208,16 @@ public class EjecutarController {
                         Proveedor proveedor = proveedorDAO.obtenerProveedorPorNombre(nombrePersona);
 
                         if (proveedor != null) {
+                            valorVenta = neto + iva + otros;
+                            valorNeto = neto;
+                            valorIva = iva;
+                            valorOtros = otros;
+
+                            CuentaCorriente cc = new CuentaCorriente(fechaLocalDate, tipoCC, comprobante, valorVenta, monto, 0,
+                                    desc, valorNeto, valorIva, valorOtros);
+
                             cc.setProveedorId(proveedor.getId());
+                            cc.setClienteId(null);
 
                             cc.setSaldo(0);
                             ccDAO.crearTransaccion(cc);
@@ -210,7 +245,7 @@ public class EjecutarController {
 
                     } catch (NumberFormatException nfe) {
                         alerta.setTitle("Error de formato");
-                        alerta.setContentText("Comprobante, venta o monto deben ser valores numéricos.");
+                        alerta.setContentText("Los campos numéricos (Neto, IVA, Otros, Monto) deben ser valores numéricos válidos.");
                         alerta.showAndWait();
                     }
                 } else if (tipo.equals("Remito")) {
@@ -258,6 +293,54 @@ public class EjecutarController {
                         cc.addComprobante(comprobante);
 
                         mostrarVentanaComprobantes(cc.getId(), cc.getFecha().format(formatter), numeroRemitoStr);
+
+                        info.setTitle("Éxito");
+                        info.setContentText("Remito actualizado correctamente (N° " + numeroRemito + ")");
+                        info.showAndWait();
+                    } catch (NumberFormatException nfe) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Cantidad, Precio y Número de Remito deben ser números válidos.");
+                        alerta.showAndWait();
+                    }
+                } else if (tipo.equals("Remito Proveedor")) {
+                    String numeroRemitoPStr = getText(remitoFieldP);
+                    String nombreStr = getText(nomProduFieldP);
+                    String cantidadPStr = getText(cantidadFieldP);
+                    String precioStr = getText(precioUnitarioPField);
+
+                    if (!verificarCampos(
+                            new String[]{numeroRemitoPStr, nombreStr, cantidadPStr, precioStr},
+                            new String[]{"Numero remito", "Nombre", "Cantidad", "Precio"}
+                    )) return;
+
+                    try {
+                        int cantidad = Integer.parseInt(cantidadPStr);
+                        double precio = Double.parseDouble(precioStr);
+                        String numeroRemito = numeroRemitoPStr.trim();
+
+                        // Buscar la CuentaCorriente asociada al número de remito
+                        CuentaCorrienteDAO ccDAO = new CuentaCorrienteDAO();
+                        CuentaCorriente cc = ccDAO.obtenerPorComprobante(numeroRemito);
+
+                        if (cc == null) {
+                            alerta.setTitle("Error");
+                            alerta.setContentText("No se encontró una cuenta corriente con número de remito: " + numeroRemito);
+                            alerta.showAndWait();
+                            return;
+                        }
+
+                        // Crear nuevo comprobante
+                        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
+                        Comprobante comprobante = new Comprobante(
+                                0,
+                                cantidad,
+                                nombreStr,
+                                precio
+                        );
+                        comprobanteDAO.crearComprobante(comprobante, cc.getId());
+                        cc.addComprobante(comprobante);
+
+                        mostrarVentanaComprobantesProveedores(cc.getId(), cc.getFecha().format(formatter), numeroRemito);
 
                         info.setTitle("Éxito");
                         info.setContentText("Remito actualizado correctamente (N° " + numeroRemito + ")");
@@ -451,6 +534,51 @@ public class EjecutarController {
         precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
 
         tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, totalCol, precioCol);
+        tablaComprobantes.getItems().addAll(comprobantes);
+        tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        double totalGeneral = comprobantes.stream()
+                .mapToDouble(c -> c.getCantidad() * c.getPrecio())
+                .sum();
+
+        Label totalLabel = new Label(String.format("TOTAL: $ %.2f", totalGeneral));
+        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+
+        VBox layout = new VBox(10, new Label("Comprobantes:"), tablaComprobantes, totalLabel);
+        layout.setPadding(new Insets(10));
+
+        Scene escena = new Scene(layout, 800, 600);
+        ventana.setScene(escena);
+        ventana.initModality(Modality.APPLICATION_MODAL);
+        ventana.showAndWait();
+    }
+
+    private void mostrarVentanaComprobantesProveedores(int movimientoId, String fecha, String persona) {
+        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
+        List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
+
+        Stage ventana = new Stage();
+        ventana.setTitle("Dia " + fecha + ", Cliente/Proveedor " + persona);
+
+        TableView<Comprobante> tablaComprobantes = new TableView<>();
+
+        TableColumn<Comprobante, String> cantidadCol = new TableColumn<>("Cantidad");
+        cantidadCol.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
+
+        TableColumn<Comprobante, String> productoCol = new TableColumn<>("Producto");
+        productoCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+
+        TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Precio");
+        precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
+
+        TableColumn<Comprobante, Number> totalCol = new TableColumn<>("Total");
+        totalCol.setCellValueFactory(data -> {
+            int cantidad = data.getValue().getCantidad();
+            double precio = data.getValue().getPrecio();
+            return new javafx.beans.property.SimpleDoubleProperty(precio * cantidad);
+        });
+
+        tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, precioCol, totalCol);
         tablaComprobantes.getItems().addAll(comprobantes);
         tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 

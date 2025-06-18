@@ -55,6 +55,7 @@ public class ConexionMySQL {
             );
         """;
 
+        // neto, iva y otros
         String sqlCuentaCorriente = """
             CREATE TABLE IF NOT EXISTS cuenta_corriente (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,9 +64,12 @@ public class ConexionMySQL {
                 fecha DATE,
                 tipo VARCHAR(50),
                 comprobante VARCHAR(50),
-                venta DECIMAL(10,2),
-                monto DECIMAL(10,2),
-                saldo DECIMAL(10,2),
+                neto DECIMAL(15, 2), 
+                iva DECIMAL(15,2),
+                otros DECIMAL(15,2),
+                venta DECIMAL(15,2),
+                monto DECIMAL(15,2),
+                saldo DECIMAL(15,2),
                 observacion TEXT,
                 FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
                 FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE CASCADE
@@ -78,7 +82,7 @@ public class ConexionMySQL {
                 cuenta_corriente_id INT NOT NULL,
                 cantidad INT NOT NULL,
                 nombre VARCHAR(255) NOT NULL,
-                precio DECIMAL(10,2) NOT NULL,
+                precio DECIMAL(15,2) NOT NULL,
                 FOREIGN KEY (cuenta_corriente_id) REFERENCES cuenta_corriente(id) ON DELETE CASCADE
                 );
         """;
