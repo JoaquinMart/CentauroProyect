@@ -61,4 +61,18 @@ public class ComprobanteDAO {
 
         return comprobantes;
     }
+
+    public boolean eliminarComprobantesPorCuentaCorrienteId(int cuentaCorrienteId) {
+        String query = "DELETE FROM comprobantes WHERE cuenta_corriente_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setInt(1, cuentaCorrienteId);
+            int filasAfectadas = pstmt.executeUpdate();
+            System.out.println("Se eliminaron " + filasAfectadas + " comprobantes para la cuenta corriente ID: " + cuentaCorrienteId);
+            return filasAfectadas > 0;
+        } catch (SQLException e) {
+            System.err.println("Error al eliminar comprobantes por cuenta corriente ID: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

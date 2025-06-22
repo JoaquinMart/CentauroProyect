@@ -1,6 +1,8 @@
 package controllers;
 
 import dao.*;
+import javafx.geometry.Pos;
+import javafx.scene.image.Image;
 import model.*;
 
 import javafx.beans.property.SimpleDoubleProperty;
@@ -56,6 +58,7 @@ public class ImprimirController {
             List<Producto> productos = productoDAO.obtenerProductos();
 
             TableView<Producto> tablaProductos = new TableView<>(FXCollections.observableArrayList(productos));
+            tablaProductos.getStyleClass().add("main-table");
 
             tablaProductos.getColumns().addAll(
                     crearColumnaNumerica("ID", "id"),
@@ -73,7 +76,6 @@ public class ImprimirController {
         }
     }
 
-    // Renombramos el método para mayor claridad, ya que ahora solo muestra deudores
     private static void mostrarClientesDeudores() {
         ClienteDAO clienteDAO = new ClienteDAO();
         try {
@@ -100,6 +102,7 @@ public class ImprimirController {
 
             // 3. Crear la TableView con la lista filtrada de clientes deudores
             TableView<Cliente> tablaClientes = new TableView<>(FXCollections.observableArrayList(clientesDeudores));
+            tablaClientes.getStyleClass().add("main-table");
 
             tablaClientes.getColumns().addAll(
                     crearColumnaNumerica("ID", "id"),
@@ -117,14 +120,18 @@ public class ImprimirController {
             tablaClientes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
             Button botonGenerarPdf = new Button("Generar PDF de Deudores");
+            botonGenerarPdf.getStyleClass().add("action-button");
             botonGenerarPdf.setOnAction(event -> generarPdfDeudores((Stage) tablaClientes.getScene().getWindow(), clientesDeudores));
 
             VBox layout = new VBox(10, new Label("Listado de Clientes Deudores:"), tablaClientes, botonGenerarPdf);
             layout.setPadding(new Insets(10));
 
             Stage ventana = new Stage();
+            ventana.getIcons().add(new Image("file:src/main/resources/icono.jpg"));
             ventana.setTitle("Clientes Deudores");
-            ventana.setScene(new Scene(layout, 1000, 600));
+            Scene scene = new Scene(layout, 1200, 800); // Crear la Scene
+            scene.getStylesheets().add(ImprimirController.class.getResource("/style.css").toExternalForm()); // O la clase correcta si este método no está en ImprimirController
+            ventana.setScene(scene); // Establecer la Scene
             ventana.show();
 
 
@@ -140,6 +147,7 @@ public class ImprimirController {
             List<Cliente> clientes = clienteDAO.obtenerClientesConCuentas();
 
             TableView<Cliente> tablaClientes = new TableView<>(FXCollections.observableArrayList(clientes));
+            tablaClientes.getStyleClass().add("main-table");
 
             tablaClientes.getColumns().addAll(
                     crearColumnaNumerica("ID", "id"),
@@ -168,6 +176,7 @@ public class ImprimirController {
             List<Proveedor> proveedores = proveedorDAO.obtenerProveedoresConCuentas();
 
             TableView<Proveedor> tablaProveedores = new TableView<>(FXCollections.observableArrayList(proveedores));
+            tablaProveedores.getStyleClass().add("main-table");
 
             tablaProveedores.getColumns().addAll(
                     crearColumnaNumerica("ID", "id"),
@@ -202,6 +211,7 @@ public class ImprimirController {
                     .orElse(null);
             return new SimpleDoubleProperty(ultima != null ? ultima.getSaldo() : 0);
         });
+        saldoCol.getStyleClass().add("custom-table-column");
         return saldoCol;
     }
 
@@ -217,18 +227,21 @@ public class ImprimirController {
                     .orElse(null);
             return new SimpleDoubleProperty(ultima != null ? ultima.getSaldo() : 0);
         });
+        saldoCol.getStyleClass().add("custom-table-column");
         return saldoCol;
     }
 
     private static <T> TableColumn<T, String> crearColumnaTexto(String titulo, String propiedad) {
         TableColumn<T, String> col = new TableColumn<>(titulo);
         col.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>(propiedad));
+        col.getStyleClass().add("custom-table-column");
         return col;
     }
 
     private static <T> TableColumn<T, Number> crearColumnaNumerica(String titulo, String propiedad) {
         TableColumn<T, Number> col = new TableColumn<>(titulo);
         col.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>(propiedad));
+        col.getStyleClass().add("custom-table-column");
         return col;
     }
 
@@ -238,7 +251,10 @@ public class ImprimirController {
 
         Stage ventana = new Stage();
         ventana.setTitle(tituloVentana);
-        ventana.setScene(new Scene(layout, 1000, 600));
+        ventana.getIcons().add(new Image("file:src/main/resources/icono.jpg"));
+        Scene scene = new Scene(layout, 1200, 800);
+        scene.getStylesheets().add(ImprimirController.class.getResource("/style.css").toExternalForm());
+        ventana.setScene(scene);
         ventana.show();
     }
 
@@ -250,7 +266,6 @@ public class ImprimirController {
         alert.showAndWait();
     }
 
-    // --- NUEVO MÉTODO: mostrarInformacion ---
     private static void mostrarInformacion(String titulo, String mensaje) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(titulo);
@@ -258,8 +273,6 @@ public class ImprimirController {
         alert.setContentText(mensaje);
         alert.showAndWait();
     }
-    // --- FIN NUEVO MÉTODO ---
-
 
     private static void generarPdfDeudores(Stage ownerStage, List<Cliente> clientes) {
         // Usamos FileChooser para que el usuario elija dónde guardar el PDF

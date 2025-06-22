@@ -1,0 +1,49 @@
+.pdf-root-pane {
+    -fx-background-color: #eee;
+}
+
+/*nombreClienteField.getStyleClass().add("pdf-input-field"); */
+
+.pdf-input-field {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 20, 0.0, 0, 2);
+    -fx-font-size: 20px;
+}
+
+/*fechaInicioPicker.getStyleClass().add("pdf-date-picker");*/
+
+.pdf-date-picker {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 20, 0.0, 0, 2);
+    -fx-font-size: 20px;
+}
+
+/*generarPdfButton.getStyleClass().add("pdf-generate-button");*/
+
+.pdf-generate-button {
+    -fx-font-size: 20px;
+    -fx-background-color: #7d5d36;
+    -fx-padding: 20px 20px;
+    -fx-border-radius: 5px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 20, 0.0, 0, 2);
+    -fx-font-weight: bold;
+}
+
+.pdf-generate-button:hover {
+    -fx-background-color: #d6c67d;
+}
+
+/*clienteLabel.getStyleClass().add("pdf-label");*/
+
+.pdf-label {
+    -fx-font-size: 20px;
+}
+
+/*inputLayout.getStyleClass().add("pdf-input-layout");*/
+
+.pdf-input-layout {
+    -fx-background-color: #d8b98f;
+    -fx-border-radius: 5px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 20, 0.0, 0, 2);
+}

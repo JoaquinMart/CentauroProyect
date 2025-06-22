@@ -174,4 +174,28 @@ public class ProductoDAO {
         }
         return producto;
     }
+
+    public boolean eliminarProducto(String codigoProducto) {
+        String query = "DELETE FROM productos WHERE codigo = ?";
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            if (conn == null) {
+                System.err.println("Error: No se pudo obtener conexión para eliminar producto.");
+                return false;
+            }
+            pstmt.setString(1, codigoProducto);
+            int filasAfectadas = pstmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Producto con código " + codigoProducto + " eliminado físicamente.");
+                return true;
+            } else {
+                System.out.println("No se encontró el producto con código " + codigoProducto + " para eliminar.");
+                return false;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al eliminar producto: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

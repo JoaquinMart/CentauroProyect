@@ -1,6 +1,5 @@
 package controllers;
 
-import dao.*;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -14,7 +13,9 @@ import dao.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Optional;
 
 public class EjecutarController {
 
@@ -372,98 +373,483 @@ public class EjecutarController {
                     }
                 }
             } else if (accion.equals("Baja")) {
-                String nameDelete = getText(nombreField);
-
-                if (nameDelete.isEmpty()) {
-                    alerta.setTitle("Error");
-                    alerta.setContentText("Escribe un nombre para eliminar.");
-                    alerta.showAndWait();
-                    return;
-                }
 
                 if (tipo.equals("Cliente")) {
-                    new ClienteDAO().eliminarCliente(nameDelete);
+                    String nameDelete = nombreField.getText().trim();
+
+                    if (nameDelete.isEmpty()) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Escribe un nombre para eliminar al cliente.");
+                        alerta.showAndWait();
+                        return;
+                    }
+
                     advertencia.setTitle("Advertencia");
-                    advertencia.setContentText("Estás a punto de eliminar al cliente " + nameDelete);
-                    advertencia.showAndWait();
-                    info.setTitle("Éxito");
-                    info.setContentText("Cliente " + nameDelete + " eliminado.");
-                    info.showAndWait();
+                    advertencia.setContentText("Estás a punto de eliminar al cliente " + nameDelete + ". ¿Confirmas?");
+                    Optional<ButtonType> result = advertencia.showAndWait();
+
+                    if (result.isPresent() && result.get() == ButtonType.OK) {
+                        new ClienteDAO().eliminarCliente(nameDelete);
+                        info.setTitle("Éxito");
+                        info.setContentText("Cliente " + nameDelete + " eliminado.");
+                        info.showAndWait();
+                    } else {
+                        info.setTitle("Cancelado");
+                        info.setContentText("Operación de eliminación de Cliente cancelada.");
+                        info.showAndWait();
+                    }
 
                 } else if (tipo.equals("Proveedor")) {
-                    new ProveedorDAO().eliminarProveedor(nameDelete);
+                    String nameDelete = nombreField.getText().trim();
+
+                    if (nameDelete.isEmpty()) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Escribe un nombre para eliminar al proveedor.");
+                        alerta.showAndWait();
+                        return;
+                    }
+
                     advertencia.setTitle("Advertencia");
-                    advertencia.setContentText("Estás a punto de eliminar al proveedor " + nameDelete);
-                    advertencia.showAndWait();
-                    info.setTitle("Éxito");
-                    info.setContentText("Cliente " + nameDelete + " eliminado.");
-                    info.showAndWait();
+                    advertencia.setContentText("Estás a punto de eliminar al proveedor " + nameDelete + ". ¿Confirmas?");
+                    Optional<ButtonType> result = advertencia.showAndWait();
+
+                    if (result.isPresent() && result.get() == ButtonType.OK) {
+                        new ProveedorDAO().eliminarProveedor(nameDelete);
+                        info.setTitle("Éxito");
+                        info.setContentText("Proveedor " + nameDelete + " eliminado.");
+                        info.showAndWait();
+                    } else {
+                        info.setTitle("Cancelado");
+                        info.setContentText("Operación de eliminación de Proveedor cancelada.");
+                        info.showAndWait();
+                    }
 
                 } else if (tipo.equals("Cuenta Corriente")) {
-                    alerta.setTitle("Error");
-                    alerta.setContentText("No se permite eliminar registros de Cuenta Corriente.");
-                    alerta.showAndWait();
-                }
+                    String nombreEntidad = nombreCuentaField.getText().trim();
+                    String fechaStr = fechaField.getText().trim();
+                    String comprobanteStr = comprobanteField.getText().trim();
 
+                    if (nombreEntidad.isEmpty() || fechaStr.isEmpty() || comprobanteStr.isEmpty()) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Para eliminar una Cuenta Corriente, debes ingresar el nombre del cliente/proveedor, la fecha y el número de comprobante.");
+                        alerta.showAndWait();
+                        return;
+                    }
+
+                    try {
+                        LocalDate fecha = LocalDate.parse(fechaStr, formatter);
+
+                        int entidadId = -1;
+                        String tipoEntidadEncontrada = "";
+
+                        ClienteDAO clienteDAO = new ClienteDAO();
+                        Cliente cliente = clienteDAO.obtenerClientePorNombre(nombreEntidad);
+
+                        if (cliente != null) {
+                            entidadId = cliente.getId();
+                            tipoEntidadEncontrada = "Cliente";
+                        } else {
+                            ProveedorDAO proveedorDAO = new ProveedorDAO();
+                            Proveedor proveedor = proveedorDAO.obtenerProveedorPorNombre(nombreEntidad);
+                            if (proveedor != null) {
+                                entidadId = proveedor.getId();
+                                tipoEntidadEncontrada = "Proveedor";
+                            }
+                        }
+
+                        if (entidadId == -1) {
+                            alerta.setTitle("Error");
+                            alerta.setContentText("No se encontró ningún cliente o proveedor con el nombre: " + nombreEntidad);
+                            alerta.showAndWait();
+                            return;
+                        }
+
+                        CuentaCorrienteDAO cuentaCorrienteDAO = new CuentaCorrienteDAO();
+                        CuentaCorriente transaccionAEliminar = null;
+
+                        if (tipoEntidadEncontrada.equals("Cliente")) {
+                            transaccionAEliminar = cuentaCorrienteDAO.obtenerTransaccionEspecifica(entidadId, null, fecha, comprobanteStr);
+                        } else {
+                            transaccionAEliminar = cuentaCorrienteDAO.obtenerTransaccionEspecifica(null, entidadId, fecha, comprobanteStr);
+                        }
+
+                        if (transaccionAEliminar == null) {
+                            alerta.setTitle("Error");
+                            alerta.setContentText("No se encontró ninguna transacción de Cuenta Corriente para " + nombreEntidad +
+                                    " en la fecha " + fecha + " con comprobante " + comprobanteStr + ".");
+                            alerta.showAndWait();
+                            return;
+                        }
+
+                        advertencia.setTitle("Advertencia Crítica");
+                        advertencia.setContentText("¡ADVERTENCIA! Estás a punto de ELIMINAR PERMANENTEMENTE la transacción de Cuenta Corriente (Comprobante: " + transaccionAEliminar.getComprobante() + ", Fecha: " + transaccionAEliminar.getFecha() + ", Entidad: " + nombreEntidad + "). Esta acción NO SE PUEDE DESHACER. ¿Estás absolutamente seguro?");
+                        Optional<ButtonType> result = advertencia.showAndWait();
+
+                        if (result.isPresent() && result.get() == ButtonType.OK) {
+                            // **Paso 1: Eliminar la transacción de la base de datos**
+                            boolean eliminada = cuentaCorrienteDAO.eliminarTransaccionPorId(transaccionAEliminar.getId());
+
+                            if (eliminada) {
+                                // **Paso 2: Recalcular saldos si la eliminación fue exitosa**
+                                List<CuentaCorriente> todas;
+                                if (tipoEntidadEncontrada.equals("Cliente")) {
+                                    todas = cuentaCorrienteDAO.obtenerTodasLasTransaccionesOrdenadasPorFechaCliente(entidadId);
+                                } else {
+                                    todas = cuentaCorrienteDAO.obtenerTodasLasTransaccionesOrdenadasPorFechaProveedor(entidadId);
+                                }
+
+                                double saldoAcumulado = 0;
+                                for (CuentaCorriente c : todas) {
+                                    saldoAcumulado += c.getVenta() - c.getMonto();
+                                    c.setSaldo(saldoAcumulado);
+                                    cuentaCorrienteDAO.actualizarTransaccion(c); // Asegúrate de que este método exista y funcione
+                                }
+
+                                info.setTitle("Éxito");
+                                info.setContentText("Transacción de Cuenta Corriente (Comprobante: " + transaccionAEliminar.getComprobante() + ") eliminada permanentemente y saldos recalculados.");
+                                info.showAndWait();
+                                // Opcional: limpiar los campos de entrada o actualizar la vista si es necesario
+                                nombreCuentaField.clear();
+                                fechaField.clear();
+                                comprobanteField.clear();
+
+                                // Si tienes un método para actualizar la vista de las tablas y resumen
+                                BuscarController buscador = new BuscarController();
+                                buscador.mostrarCuentasYResumen(nombreEntidad, tablaCuentas, tablaProveedores, resumenClienteText); // Pasa tus tablas y textflow
+                            } else {
+                                alerta.setTitle("Error");
+                                alerta.setContentText("No se pudo eliminar la transacción de Cuenta Corriente.");
+                                alerta.showAndWait();
+                            }
+                        } else {
+                            info.setTitle("Cancelado");
+                            info.setContentText("Operación de eliminación de Cuenta Corriente cancelada.");
+                            info.showAndWait();
+                        }
+
+                    } catch (DateTimeParseException e) {
+                        alerta.setTitle("Error de Fecha");
+                        alerta.setContentText("El formato de fecha no es válido. Por favor, usa el formato " + formatter + ".");
+                        alerta.showAndWait();
+                    } catch (Exception e) {
+                        System.err.println("Error general al procesar eliminación de Cuenta Corriente: " + e.getMessage());
+                        e.printStackTrace();
+                        alerta.setTitle("Error Interno");
+                        alerta.setContentText("Ocurrió un error inesperado al intentar eliminar la Cuenta Corriente.");
+                        alerta.showAndWait();
+                    }
+                } else if (tipo.equals("Producto")) {
+                    String codigoProducto = codigoField.getText().trim(); // Usar codigoField
+
+                    if (codigoProducto.isEmpty()) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Escribe un código de producto para eliminar.");
+                        alerta.showAndWait();
+                        return;
+                    }
+
+                    advertencia.setTitle("Advertencia");
+                    advertencia.setContentText("Estás a punto de eliminar el producto con código " + codigoProducto + ". ¿Confirmas?");
+                    Optional<ButtonType> result = advertencia.showAndWait();
+
+                    if (result.isPresent() && result.get() == ButtonType.OK) {
+                        new ProductoDAO().eliminarProducto(codigoProducto);
+                        info.setTitle("Éxito");
+                        info.setContentText("Producto con código " + codigoProducto + " eliminado.");
+                        info.showAndWait();
+                    } else {
+                        info.setTitle("Cancelado");
+                        info.setContentText("Operación de eliminación de Producto cancelada.");
+                        info.showAndWait();
+                    }
+
+                } else if (tipo.equals("Remito")) {
+                    String numeroRemito = remitoField.getText().trim();
+
+                    if (numeroRemito.isEmpty()) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Escribe un número de remito para anular.");
+                        alerta.showAndWait();
+                        return;
+                    }
+
+                    advertencia.setTitle("Advertencia");
+                    advertencia.setContentText("Estás a punto de eliminar el remito número " + numeroRemito + ". Deseas eliminar?");
+                    Optional<ButtonType> result = advertencia.showAndWait();
+
+                    if (result.isPresent() && result.get() == ButtonType.OK) {
+                        try {
+                            CuentaCorrienteDAO ccDAO = new CuentaCorrienteDAO();
+                            CuentaCorriente cuentaCorrienteAEliminar = ccDAO.obtenerPorComprobante(numeroRemito);
+
+                            if (cuentaCorrienteAEliminar != null) {
+                                int idCuentaCorriente = cuentaCorrienteAEliminar.getId();
+                                ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
+                                boolean cuentaCorrienteEliminada = comprobanteDAO.eliminarComprobantesPorCuentaCorrienteId(idCuentaCorriente);
+
+                                if (cuentaCorrienteEliminada) {
+                                    info.setTitle("Éxito");
+                                    info.setContentText("Remito número " + numeroRemito + " eliminado.");
+                                    info.showAndWait();
+                                    remitoField.clear();
+                                } else {
+                                    alerta.setTitle("Error");
+                                    alerta.setContentText("Error al eliminar " + numeroRemito + ". Inténtalo de nuevo.");
+                                    alerta.showAndWait();
+                                }
+                            } else {
+                                advertencia.setTitle("Advertencia");
+                                advertencia.setContentText("No se encontró ninguna cuenta corriente con el número de remito: " + numeroRemito + ".");
+                                advertencia.showAndWait();
+                            }
+                        } catch (Exception e) {
+                            alerta.setTitle("Error");
+                            alerta.setContentText("Ocurrió un error al intentar eliminar el remito: " + e.getMessage());
+                            alerta.showAndWait();
+                            e.printStackTrace();
+                        }
+                    } else {
+                        info.setTitle("Cancelado");
+                        info.setContentText("Operación de anulación de Remito cancelada.");
+                        info.showAndWait();
+                    }
+                }
             } else if (accion.equals("Modificación")) {
-                String nameChange = getText(nombreField);
-
                 if (tipo.equals("Cliente")) {
+
+                    String nombreClienteProveedorABuscar = getText(nombreField);
+
+                    if (nombreClienteProveedorABuscar.isEmpty()) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Debe ingresar el nombre del cliente/proveedor a modificar.");
+                        alerta.showAndWait();
+                        return;
+                    }
                     ClienteDAO dao = new ClienteDAO();
-                    Cliente existente = dao.obtenerClientePorNombre(nameChange);
+                    Cliente existente = dao.obtenerClientePorNombre(nombreClienteProveedorABuscar);
 
                     if (existente == null) {
                         alerta.setTitle("Error");
-                        alerta.setContentText("No se encontró el cliente " + nameChange);
+                        alerta.setContentText("No se encontró el cliente " + nombreClienteProveedorABuscar);
                         alerta.showAndWait();
                     } else {
-                        existente.setNombre(getText(nombreField));
-                        existente.setRazonSocial(getText(razonField));
-                        existente.setDomicilio(getText(domicilioField));
-                        existente.setLocalidad(getText(localidadField));
-                        existente.setCodigoPostal(getText(codigoPostalField));
-                        existente.setTelefono(getText(telefonoField));
-                        existente.setCUIT(getText(cuitField));
-                        existente.setCondicion(getText(condicionField));
-                        String fechaTexto = getText(altaField);
-                        LocalDate fechaAlta = LocalDate.parse(fechaTexto, formatter);
-                        existente.setFechaAlta(fechaAlta);
-                        existente.setProveedor(getText(proveedorField));
+                        // Confirmación antes de modificar
+                        advertencia.setTitle("Confirmar Modificación");
+                        advertencia.setContentText("Estás a punto de modificar el cliente: " + existente.getNombre() + ". ¿Confirmas?");
+                        Optional<ButtonType> result = advertencia.showAndWait();
 
-                        dao.actualizarCliente(existente);
-                        info.setTitle("Éxito");
-                        info.setContentText("Cliente actualizado: " + existente);
-                        info.showAndWait();
+                        if (result.isPresent() && result.get() == ButtonType.OK) {
+                            // Aplicar modificaciones solo si el campo no está vacío
+                            String nuevoNombre = getText(nombreField); // Obtener el valor actual del campo de nombre
+                            if (!nuevoNombre.isEmpty()) { // Si el usuario ingresó un nuevo nombre (o lo dejó igual pero lo re-escribió)
+                                existente.setNombre(nuevoNombre);
+                            }
+                            // Si el usuario deja el campo de nombre vacío, el nombre existente NO SE MODIFICA.
+                            // Considera si este es el comportamiento deseado, o si debería requerir el nombre siempre.
+                            // Si el nombre es el identificador único, no debería poder dejarse vacío al buscar/modificar.
+
+                            String razonSocial = getText(razonField);
+                            if (!razonSocial.isEmpty()) {
+                                existente.setRazonSocial(razonSocial);
+                            }
+
+                            String domicilio = getText(domicilioField);
+                            if (!domicilio.isEmpty()) {
+                                existente.setDomicilio(domicilio);
+                            }
+
+                            String localidad = getText(localidadField);
+                            if (!localidad.isEmpty()) {
+                                existente.setLocalidad(localidad);
+                            }
+
+                            String codigoPostal = getText(codigoPostalField);
+                            if (!codigoPostal.isEmpty()) {
+                                existente.setCodigoPostal(codigoPostal);
+                            }
+
+                            String telefono = getText(telefonoField);
+                            if (!telefono.isEmpty()) {
+                                existente.setTelefono(telefono);
+                            }
+
+                            String cuit = getText(cuitField);
+                            if (!cuit.isEmpty()) {
+                                existente.setCUIT(cuit);
+                            }
+
+                            String condicion = getText(condicionField);
+                            if (!condicion.isEmpty()) {
+                                existente.setCondicion(condicion);
+                            }
+
+                            String fechaTexto = getText(altaField);
+                            if (!fechaTexto.isEmpty()) {
+                                try {
+                                    LocalDate fechaAlta = LocalDate.parse(fechaTexto, formatter);
+                                    existente.setFechaAlta(fechaAlta);
+                                } catch (DateTimeParseException e) {
+                                    alerta.setTitle("Error de Formato");
+                                    alerta.setContentText("El formato de fecha de alta no es válido. Por favor, use el formato " + formatter.toString() + ".");
+                                    alerta.showAndWait();
+                                    return; // Detiene la modificación si la fecha es inválida
+                                }
+                            }
+
+                            String proveedor = getText(proveedorField);
+                            if (!proveedor.isEmpty()) {
+                                existente.setProveedor(proveedor);
+                            }
+
+                            dao.actualizarCliente(existente);
+                            info.setTitle("Éxito");
+                            info.setContentText("Cliente '" + existente.getNombre() + "' actualizado exitosamente.");
+                            info.showAndWait();
+                        } else {
+                            info.setTitle("Cancelado");
+                            info.setContentText("Operación de modificación de Cliente cancelada.");
+                            info.showAndWait();
+                        }
                     }
 
                 } else if (tipo.equals("Proveedor")) {
+                    String nombreClienteProveedorABuscar = getText(nombreField);
+
+                    if (nombreClienteProveedorABuscar.isEmpty()) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("Debe ingresar el nombre del cliente/proveedor a modificar.");
+                        alerta.showAndWait();
+                        return;
+                    }
                     ProveedorDAO dao = new ProveedorDAO();
-                    Proveedor existente = dao.obtenerProveedorPorNombre(nameChange);
+                    Proveedor existente = dao.obtenerProveedorPorNombre(nombreClienteProveedorABuscar);
 
                     if (existente == null) {
                         alerta.setTitle("Error");
-                        alerta.setContentText("No se encontró el proveedor " + nameChange);
+                        alerta.setContentText("No se encontró el proveedor " + nombreClienteProveedorABuscar);
                         alerta.showAndWait();
                     } else {
-                        existente.setNombre(getText(nombreField));
-                        existente.setRazonSocial(getText(razonField));
-                        existente.setDomicilio(getText(domicilioField));
-                        existente.setLocalidad(getText(localidadField));
-                        existente.setCodigoPostal(getText(codigoPostalField));
-                        existente.setTelefono(getText(telefonoField));
-                        existente.setCUIT(getText(cuitField));
-                        existente.setCategoria(getText(categoriaField));
-                        existente.setContacto(getText(contactoField));
+                        // Confirmación antes de modificar
+                        advertencia.setTitle("Confirmar Modificación");
+                        advertencia.setContentText("Estás a punto de modificar el proveedor: " + existente.getNombre() + ". ¿Confirmas?");
+                        Optional<ButtonType> result = advertencia.showAndWait();
 
-                        dao.actualizarProveedor(existente);
-                        info.setTitle("Éxito");
-                        info.setContentText("Proveedor actualizado: " + existente);
-                        info.showAndWait();
+                        if (result.isPresent() && result.get() == ButtonType.OK) {
+                            // Aplicar modificaciones solo si el campo no está vacío
+                            String nuevoNombre = getText(nombreField);
+                            if (!nuevoNombre.isEmpty()) {
+                                existente.setNombre(nuevoNombre);
+                            }
+
+                            String razonSocial = getText(razonField);
+                            if (!razonSocial.isEmpty()) {
+                                existente.setRazonSocial(razonSocial);
+                            }
+
+                            String domicilio = getText(domicilioField);
+                            if (!domicilio.isEmpty()) {
+                                existente.setDomicilio(domicilio);
+                            }
+
+                            String localidad = getText(localidadField);
+                            if (!localidad.isEmpty()) {
+                                existente.setLocalidad(localidad);
+                            }
+
+                            String codigoPostal = getText(codigoPostalField);
+                            if (!codigoPostal.isEmpty()) {
+                                existente.setCodigoPostal(codigoPostal);
+                            }
+
+                            String telefono = getText(telefonoField);
+                            if (!telefono.isEmpty()) {
+                                existente.setTelefono(telefono);
+                            }
+
+                            String cuit = getText(cuitField);
+                            if (!cuit.isEmpty()) {
+                                existente.setCUIT(cuit);
+                            }
+
+                            String categoria = getText(categoriaField);
+                            if (!categoria.isEmpty()) {
+                                existente.setCategoria(categoria);
+                            }
+
+                            String contacto = getText(contactoField);
+                            if (!contacto.isEmpty()) {
+                                existente.setContacto(contacto);
+                            }
+
+                            dao.actualizarProveedor(existente);
+                            info.setTitle("Éxito");
+                            info.setContentText("Proveedor '" + existente.getNombre() + "' actualizado exitosamente.");
+                            info.showAndWait();
+                        } else {
+                            info.setTitle("Cancelado");
+                            info.setContentText("Operación de modificación de Proveedor cancelada.");
+                            info.showAndWait();
+                        }
+                    }
+                } else if (tipo.equals("Producto")) {
+                    String codigoProductoABuscar = getText(codigoField).trim();
+                    ProductoDAO dao = new ProductoDAO();
+                    Producto existente = dao.buscarProductoPorCodigo(codigoProductoABuscar);
+
+                    if (existente == null) {
+                        alerta.setTitle("Error");
+                        alerta.setContentText("No se encontró el producto con código " + codigoProductoABuscar);
+                        alerta.showAndWait();
+                    } else {
+                        // Confirmación antes de modificar
+                        advertencia.setTitle("Confirmar Modificación");
+                        advertencia.setContentText("Estás a punto de modificar el producto: " + existente.getNombre() + " (Código: " + existente.getCodigo() + "). ¿Confirmas?");
+                        Optional<ButtonType> result = advertencia.showAndWait();
+
+                        if (result.isPresent() && result.get() == ButtonType.OK) {
+                            String nuevoCodigo = getText(codigoField).trim();
+                            if (!nuevoCodigo.isEmpty() && !nuevoCodigo.equals(existente.getCodigo())) {
+                                existente.setCodigo(nuevoCodigo);
+                            }
+
+                            String nuevoNombre = getText(nomProduField).trim();
+                            if (!nuevoNombre.isEmpty()) {
+                                existente.setNombre(nuevoNombre);
+                            }
+
+                            String precioStr = getText(preioUnitarioField).trim();
+                            if (!precioStr.isEmpty()) {
+                                try {
+                                    double nuevoPrecio = Double.parseDouble(precioStr);
+                                    existente.setPrecio(nuevoPrecio);
+                                } catch (NumberFormatException e) {
+                                    alerta.setTitle("Error de Formato");
+                                    alerta.setContentText("El precio unitario debe ser un valor numérico válido.");
+                                    alerta.showAndWait();
+                                    return;
+                                }
+                            }
+
+                            dao.modificarProducto(existente);
+                            info.setTitle("Éxito");
+                            info.setContentText("Producto '" + existente.getNombre() + "' actualizado exitosamente.");
+                            info.showAndWait();
+
+                            // Opcional: Limpiar los campos después de la modificación exitosa
+                            codigoField.clear();
+                            nomProduField.clear();
+                            preioUnitarioField.clear();
+
+                        } else {
+                            info.setTitle("Cancelado");
+                            info.setContentText("Operación de modificación de Producto cancelada.");
+                            info.showAndWait();
+                        }
                     }
 
                 } else if (tipo.equals("Cuenta Corriente")) {
                     alerta.setTitle("Error");
-                    alerta.setContentText("No se permite modificar registros de Cuenta Corriente.");
+                    alerta.setContentText("No se permite modificar registros de Cuenta Corriente. Utilice la función de Baja si desea eliminar una transacción.");
                     alerta.showAndWait();
                 }
             }

@@ -252,6 +252,7 @@ public class AppController {
         TextField buscarNombreField = new TextField();
         buscarNombreField.setPromptText("Buscar por nombre");
         Button botonBuscar = new Button("Buscar");
+        Button botonGuardarPdf = new Button("Generar PDF");
         Button botonImprimir = new Button("Imprimir");
 
         TextField[] textFields = {
@@ -349,7 +350,7 @@ public class AppController {
                 observacionField, cantidadField, remitoField, codProdu,
                 textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
                 codigoField, nomProduField, preioUnitarioField,
-                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField, netoField, ivaField, otrosField
         ));
 
         accionCombo.setOnAction(e -> actualizarCamposFormulario(
@@ -361,7 +362,7 @@ public class AppController {
                 observacionField, cantidadField, remitoField, codProdu,
                 textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
                 codigoField, nomProduField, preioUnitarioField,
-                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField, netoField, ivaField, otrosField
         ));
 
         // Llamada inicial
@@ -374,8 +375,17 @@ public class AppController {
                 observacionField, cantidadField, remitoField, codProdu,
                 textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
                 codigoField, nomProduField, preioUnitarioField,
-                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField
+                remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField, netoField, ivaField, otrosField
         );
+
+        // Inicializa el nuevo controlador
+        PDFController pdfController = new PDFController();
+
+        // Acción para el nuevo botón "Guardar PDF"
+        botonGuardarPdf.setOnAction(e -> {
+            pdfController.handleGuardarPdfButton(); // Llama al método del controlador PDF
+        });
+
 
         EjecutarController controlador = new EjecutarController(formatter, alerta, info, advertencia);
         botonEjecutar.setOnAction(e -> {
@@ -410,12 +420,13 @@ public class AppController {
         filaCombos1.setAlignment(Pos.CENTER_LEFT);
 
         // --- Fila para buscar y botón (AHORA SE USARÁ EN LA SECCIÓN DE TABLAS) ---
-        HBox filaCombos2 = new HBox(10, buscarNombreField, botonBuscar, resumenClienteText);
+        HBox filaCombos2 = new HBox(10, buscarNombreField, botonBuscar, botonGuardarPdf, resumenClienteText);
         filaCombos2.getStyleClass().add("combo-row");
         buscarNombreField.setPrefWidth(anchoComun);
         buscarNombreField.getStyleClass().add("search-field");
         botonBuscar.setPrefWidth(anchoComun);
         botonBuscar.getStyleClass().add("search-button");
+        botonGuardarPdf.getStyleClass().add("search-button");
         filaCombos2.setAlignment(Pos.CENTER_LEFT);
 
         // --- Contenedor vertical para los combos ---
@@ -530,7 +541,8 @@ public class AppController {
             List<TextField> textosProveedores, List<TextField> textosCuentaCorriente, List<TextField> textosComprobante,
             List<TextField> textosFacturas, List<TextField> textosProductos, TextField codigoField,
             TextField nomProduField, TextField preioUnitarioField, TextField remitoFieldP, TextField nomProduFieldP,
-            TextField cantidadFieldP, TextField precioUnitarioPField)
+            TextField cantidadFieldP, TextField precioUnitarioPField, TextField netoField, TextField ivaField,
+            TextField otrosField)
     {
 
         String tipo = tipoCombo.getValue();
@@ -554,26 +566,45 @@ public class AppController {
         }
 
         if ("Cuenta Corriente".equals(tipo)) {
-            // Mostrar campos de cuenta corriente completo
             camposCuentaCorriente.setVisible(true);
             camposCuentaCorriente.setManaged(true);
 
-            // Asegurar todos visibles dentro
-            for (Node nodo : camposCuentaCorriente.getChildren()) {
-                nodo.setVisible(true);
-                nodo.setManaged(true);
+            if ("Baja".equals(accion)) {
+                for (Node nodo : camposCuentaCorriente.getChildren()) {
+                    nodo.setVisible(false);
+                    nodo.setManaged(false);
+                }
+
+                nombreCuentaField.setVisible(true);
+                nombreCuentaField.setManaged(true);
+                fechaField.setVisible(true);
+                fechaField.setManaged(true);
+                comprobanteField.setVisible(true);
+                comprobanteField.setManaged(true);
+
+            } else {
+                for (Node nodo : camposCuentaCorriente.getChildren()) {
+                    nodo.setVisible(true);
+                    nodo.setManaged(true);
+                }
             }
             asignarEnterEntreCampos(textosCuentaCorriente);
 
         } else if ("Remito Proveedor".equals(tipo)) {
-            // Mostrar campos de cuenta corriente completo
             camposProveedores.setVisible(true);
             camposProveedores.setManaged(true);
 
-            // Asegurar todos visibles dentro
-            for (Node nodo : camposProveedores.getChildren()) {
-                nodo.setVisible(true);
-                nodo.setManaged(true);
+            if ("Baja".equals(accion)) {
+                for (Node nodo : camposProveedores.getChildren()) {
+                    nodo.setVisible(false);
+                    nodo.setManaged(false);
+                }
+
+            } else {
+                for (Node nodo : camposProveedores.getChildren()) {
+                    nodo.setVisible(true);
+                    nodo.setManaged(true);
+                }
             }
             if (nombreProductoPreviewLabel != null) {
                 nombreProductoPreviewLabel.setVisible(true);
@@ -582,14 +613,21 @@ public class AppController {
             asignarEnterEntreCampos(textosProveedores);
 
         } else if ("Remito".equals(tipo)) {
-            // Mostrar campos de cuenta corriente completo
             camposComprobante.setVisible(true);
             camposComprobante.setManaged(true);
 
-            // Asegurar todos visibles dentro
-            for (Node nodo : camposComprobante.getChildren()) {
-                nodo.setVisible(true);
-                nodo.setManaged(true);
+            if ("Baja".equals(accion)) {
+                for (Node nodo : camposComprobante.getChildren()) {
+                    nodo.setVisible(false);
+                    nodo.setManaged(false);
+                }
+                remitoField.setVisible(true);
+                remitoField.setManaged(true);
+            } else {
+                for (Node nodo : camposComprobante.getChildren()) {
+                    nodo.setVisible(true);
+                    nodo.setManaged(true);
+                }
             }
             if (nombreProductoPreviewLabel != null) {
                 nombreProductoPreviewLabel.setVisible(true);
@@ -598,23 +636,28 @@ public class AppController {
             asignarEnterEntreCampos(textosComprobante);
 
         } else if ("Producto".equals(tipo)) {
-            // Mostrar campos de cuenta corriente completo
             camposProductos.setVisible(true);
             camposProductos.setManaged(true);
 
-            // Asegurar todos visibles dentro
-            for (Node nodo : camposProductos.getChildren()) {
-                nodo.setVisible(true);
-                nodo.setManaged(true);
+            if ("Baja".equals(accion)) {
+                for (Node nodo : camposProductos.getChildren()) {
+                    nodo.setVisible(false);
+                    nodo.setManaged(false);
+                }
+                codigoField.setVisible(true);
+                codigoField.setManaged(true);
+            } else {
+                for (Node nodo : camposProductos.getChildren()) {
+                    nodo.setVisible(true);
+                    nodo.setManaged(true);
+                }
             }
             asignarEnterEntreCampos(textosProductos);
 
         } else if ("Cliente".equals(tipo) || "Proveedor".equals(tipo)) {
-            // Mostrar campos normales
             camposNormales.setVisible(true);
             camposNormales.setManaged(true);
 
-            // Primero ocultar todos los campos individuales
             TextField[] todosCamposNormales = {
                     nombreField, razonField, domicilioField, localidadField,
                     codigoPostalField, telefonoField, cuitField, condicionField,
@@ -625,12 +668,11 @@ public class AppController {
                 tf.setManaged(false);
             }
 
-            // Mostrar solo los que correspondan
-            if ("Cliente".equals(tipo)) {
-                if ("Baja".equals(accion)) {
-                    nombreField.setVisible(true);
-                    nombreField.setManaged(true);
-                } else {
+            if ("Baja".equals(accion)) {
+                nombreField.setVisible(true);
+                nombreField.setManaged(true);
+            } else {
+                if ("Cliente".equals(tipo)) {
                     nombreField.setVisible(true);
                     razonField.setVisible(true);
                     domicilioField.setVisible(true);
@@ -638,35 +680,9 @@ public class AppController {
                     codigoPostalField.setVisible(true);
                     telefonoField.setVisible(true);
                     cuitField.setVisible(true);
-                    nombreField.setManaged(true);
-                    razonField.setManaged(true);
-                    domicilioField.setManaged(true);
-                    localidadField.setManaged(true);
-                    codigoPostalField.setManaged(true);
-                    telefonoField.setManaged(true);
-                    cuitField.setManaged(true);
-                }
-                if ("Alta".equals(accion) || "Modificación".equals(accion)) {
                     condicionField.setVisible(true);
                     altaField.setVisible(true);
                     proveedorField.setVisible(true);
-                    condicionField.setManaged(true);
-                    altaField.setManaged(true);
-                    proveedorField.setManaged(true);
-                }
-                asignarEnterEntreCampos(textosClientes);
-            } else if ("Proveedor".equals(tipo)) {
-                if ("Baja".equals(accion)) {
-                    nombreField.setVisible(true);
-                    nombreField.setManaged(true);
-                } else {
-                    nombreField.setVisible(true);
-                    razonField.setVisible(true);
-                    domicilioField.setVisible(true);
-                    localidadField.setVisible(true);
-                    codigoPostalField.setVisible(true);
-                    telefonoField.setVisible(true);
-                    cuitField.setVisible(true);
                     nombreField.setManaged(true);
                     razonField.setManaged(true);
                     domicilioField.setManaged(true);
@@ -674,14 +690,31 @@ public class AppController {
                     codigoPostalField.setManaged(true);
                     telefonoField.setManaged(true);
                     cuitField.setManaged(true);
-                }
-                if ("Alta".equals(accion) || "Modificación".equals(accion)) {
+                    condicionField.setManaged(true);
+                    altaField.setManaged(true);
+                    proveedorField.setManaged(true);
+                    asignarEnterEntreCampos(textosClientes);
+                } else if ("Proveedor".equals(tipo)) {
+                    nombreField.setVisible(true);
+                    razonField.setVisible(true);
+                    domicilioField.setVisible(true);
+                    localidadField.setVisible(true);
+                    codigoPostalField.setVisible(true);
+                    telefonoField.setVisible(true);
+                    cuitField.setVisible(true);
                     categoriaField.setVisible(true);
                     contactoField.setVisible(true);
+                    nombreField.setManaged(true);
+                    razonField.setManaged(true);
+                    domicilioField.setManaged(true);
+                    localidadField.setManaged(true);
+                    codigoPostalField.setManaged(true);
+                    telefonoField.setManaged(true);
+                    cuitField.setManaged(true);
                     categoriaField.setManaged(true);
                     contactoField.setManaged(true);
+                    asignarEnterEntreCampos(textosProveedores);
                 }
-                asignarEnterEntreCampos(textosProveedores);
             }
         }
     }
