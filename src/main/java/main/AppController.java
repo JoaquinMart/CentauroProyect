@@ -13,13 +13,17 @@ import javafx.stage.Stage;
 import javafx.scene.text.*;
 
 import controllers.*;
+import javafx.util.Callback;
 import model.*;
 import util.*;
 
+import java.io.InputStream;
 import java.sql.SQLException;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 public class AppController {
     private ProductoDAO productoDAO;
@@ -38,7 +42,17 @@ public class AppController {
         Alert info = new Alert(Alert.AlertType.INFORMATION);
         Alert advertencia = new Alert(Alert.AlertType.WARNING);
 
-        stage.getIcons().add(new Image("file:src/main/resources/icono.jpg"));
+        InputStream iconStream = getClass().getResourceAsStream("/icono.png");
+        if (iconStream == null) {
+            System.err.println("❌ No se encontró el archivo icono.ico");
+            Alert all = new Alert(Alert.AlertType.ERROR);
+            all.setTitle("Error de Ícono");
+            all.setHeaderText("No se pudo cargar el ícono");
+            all.setContentText("Verificá que icono.ico esté en src/main/resources y esté bien empaquetado.");
+            all.showAndWait();
+        } else {
+            stage.getIcons().add(new Image(iconStream));
+        }
 
         ComboBox<String> tipoCombo = new ComboBox<>();
         tipoCombo.getItems().addAll("Cliente", "Proveedor", "Cuenta Corriente", "Remito", "Producto", "Remito Proveedor");
@@ -134,22 +148,31 @@ public class AppController {
             String fechaStr = (fecha != null) ? fecha.format(formatter) : "";
             return new javafx.beans.property.SimpleStringProperty(fechaStr);
         });
+        fechaCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.11));
         fechaCol.getStyleClass().add("custom-table-column");
         TableColumn<CuentaCorriente, String> numCol = new TableColumn<>("N° Remito");
         numCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getComprobante()));
+        numCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.11));
         numCol.getStyleClass().add("custom-table-column");
         TableColumn<CuentaCorriente, String> tipoCol = new TableColumn<>("Tipo");
         tipoCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getTipo()));
+        tipoCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.08));
         tipoCol.getStyleClass().add("custom-table-column");
         TableColumn<CuentaCorriente, Number> ventaCol = new TableColumn<>("Venta");
         ventaCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getVenta()));
+        ventaCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.15));
         ventaCol.getStyleClass().add("custom-table-column");
+        ventaCol.setCellFactory(AppController.getDecimalFormatCellFactory());
         TableColumn<CuentaCorriente, Number> montoCol = new TableColumn<>("Pago");
         montoCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getMonto()));
+        montoCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.15));
         montoCol.getStyleClass().add("custom-table-column");
+        montoCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
         TableColumn<CuentaCorriente, Number> saldoCol = new TableColumn<>("Saldo");
         saldoCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getSaldo()));
+        saldoCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.20));
         saldoCol.getStyleClass().add("custom-table-column");
+        saldoCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
 
         TableColumn<CuentaCorriente, String> obsCol = new TableColumn<>("Observación");
         obsCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getObservacion()));
@@ -157,26 +180,32 @@ public class AppController {
             TableCell<CuentaCorriente, String> cell = new TableCell<>() {
                 private final Text text = new Text();
                 {
-                    text.wrappingWidthProperty().bind(obsCol.widthProperty().subtract(10));
                     setGraphic(text);
+                    text.setWrappingWidth(0);
                 }
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     if (empty || item == null) {
                         text.setText("");
+                        setTooltip(null);
+                        setGraphic(null);
                     } else {
                         text.setText(item);
+                        setGraphic(text);
+                        setTooltip(new Tooltip(item));
                     }
                 }
             };
             return cell;
         });
-        obsCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.1));
-        obsCol.getStyleClass().add("custom-table-column"); // <--- AÑADE ESTO
+        obsCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.20));
+        obsCol.setMinWidth(700);
+        obsCol.getStyleClass().add("custom-table-column");
+        obsCol.getStyleClass().add("center-column-header");
 
         tablaCuentas.getColumns().addAll(fechaCol, numCol, tipoCol, ventaCol, montoCol, saldoCol, obsCol);
-        tablaCuentas.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tablaCuentas.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         // TABLA DE PROVEEDORES
 
@@ -189,36 +218,53 @@ public class AppController {
             return new javafx.beans.property.SimpleStringProperty(fechaStr);
         });
         fechaProvCol.getStyleClass().add("custom-table-column");
+        fechaProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
+
         TableColumn<CuentaCorriente, String> numProvCol = new TableColumn<>("N° Remito");
         numProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getComprobante()));
         numProvCol.getStyleClass().add("custom-table-column");
+        numProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
+
         TableColumn<CuentaCorriente, String> tipoProvCol = new TableColumn<>("Tipo");
         tipoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getTipo()));
         tipoProvCol.getStyleClass().add("custom-table-column");
+        tipoProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.08));
 
-        // *** AQUI VAN LOS 3 CAMPOS NUEVOS PARA PROVEEDORES ***
         TableColumn<CuentaCorriente, Number> netoProvCol = new TableColumn<>("Neto");
         netoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getNeto()));
         netoProvCol.getStyleClass().add("custom-table-column");
+        netoProvCol.setCellFactory(AppController.getDecimalFormatCellFactory());
+        netoProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
 
         TableColumn<CuentaCorriente, Number> ivaProvCol = new TableColumn<>("IVA");
         ivaProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getIva()));
         ivaProvCol.getStyleClass().add("custom-table-column");
+        ivaProvCol.setCellFactory(AppController.getDecimalFormatCellFactory());
+        ivaProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
 
         TableColumn<CuentaCorriente, Number> otrosProvCol = new TableColumn<>("Otros");
         otrosProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getOtros()));
         otrosProvCol.getStyleClass().add("custom-table-column");
-        // ******************************************************
+        otrosProvCol.setCellFactory(AppController.getDecimalFormatCellFactory());
+        otrosProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
 
         TableColumn<CuentaCorriente, Number> ventaProvCol = new TableColumn<>("Venta");
         ventaProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getVenta()));
         ventaProvCol.getStyleClass().add("custom-table-column");
+        ventaProvCol.setCellFactory(AppController.getDecimalFormatCellFactory());
+        ventaProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
+
         TableColumn<CuentaCorriente, Number> montoProvCol = new TableColumn<>("Pago");
         montoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getMonto()));
         montoProvCol.getStyleClass().add("custom-table-column");
+        montoProvCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
+        montoProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.11));
+
         TableColumn<CuentaCorriente, Number> saldoProvCol = new TableColumn<>("Saldo");
         saldoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getSaldo()));
         saldoProvCol.getStyleClass().add("custom-table-column");
+        saldoProvCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
+        saldoProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.11));
 
         TableColumn<CuentaCorriente, String> obsProvCol = new TableColumn<>("Observación");
         obsProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getObservacion()));
@@ -226,26 +272,32 @@ public class AppController {
             TableCell<CuentaCorriente, String> cell = new TableCell<>() {
                 private final Text text = new Text();
                 {
-                    text.wrappingWidthProperty().bind(obsProvCol.widthProperty().subtract(10));
                     setGraphic(text);
+                    text.setWrappingWidth(0);
                 }
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     if (empty || item == null) {
                         text.setText("");
+                        setTooltip(null);
+                        setGraphic(null);
                     } else {
                         text.setText(item);
+                        setGraphic(text);
+                        setTooltip(new Tooltip(item));
                     }
                 }
             };
             return cell;
         });
-        obsProvCol.prefWidthProperty().bind(tablaProveedores.widthProperty().multiply(0.1));
+        obsProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
+        obsProvCol.setMinWidth(700);
         obsProvCol.getStyleClass().add("custom-table-column");
+        obsProvCol.getStyleClass().add("center-column-header");
 
         tablaProveedores.getColumns().addAll(fechaProvCol, numProvCol, tipoProvCol, netoProvCol, ivaProvCol, otrosProvCol, ventaProvCol, montoProvCol, saldoProvCol, obsProvCol);
-        tablaProveedores.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tablaProveedores.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         // Botones
         botonEjecutar = new Button("Ejecutar");
@@ -348,7 +400,7 @@ public class AppController {
                 cuitField, condicionField, altaField, proveedorField, categoriaField, contactoField,
                 nombreCuentaField, fechaField, comprobanteField, tipoField, montoField, saldoField,
                 observacionField, cantidadField, remitoField, codProdu,
-                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
+                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosFacturas, textosProductos,
                 codigoField, nomProduField, preioUnitarioField,
                 remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField, netoField, ivaField, otrosField
         ));
@@ -360,7 +412,7 @@ public class AppController {
                 cuitField, condicionField, altaField, proveedorField, categoriaField, contactoField,
                 nombreCuentaField, fechaField, comprobanteField, tipoField, montoField, saldoField,
                 observacionField, cantidadField, remitoField, codProdu,
-                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
+                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosFacturas, textosProductos,
                 codigoField, nomProduField, preioUnitarioField,
                 remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField, netoField, ivaField, otrosField
         ));
@@ -373,7 +425,7 @@ public class AppController {
                 cuitField, condicionField, altaField, proveedorField, categoriaField, contactoField,
                 nombreCuentaField, fechaField, comprobanteField, tipoField, montoField, saldoField,
                 observacionField, cantidadField, remitoField, codProdu,
-                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosProductos, textosFacturas,
+                textosClientes, textosProveedor, textosCuentaCorriente, textosComprobante, textosFacturas, textosProductos,
                 codigoField, nomProduField, preioUnitarioField,
                 remitoFieldP, nomProduFieldP, cantidadFieldP, precioUnitarioPField, netoField, ivaField, otrosField
         );
@@ -475,7 +527,7 @@ public class AppController {
         formulario.setMaxWidth(Double.MAX_VALUE);
         formulario.setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(formulario, Priority.NEVER);
-        formulario.setPrefWidth(500);
+        formulario.setPrefWidth(700);
         HBox.setHgrow(formulario, Priority.ALWAYS);
 
         // --- Tablas (DERECHA) ---
@@ -610,7 +662,7 @@ public class AppController {
                 nombreProductoPreviewLabel.setVisible(true);
                 nombreProductoPreviewLabel.setManaged(true);
             }
-            asignarEnterEntreCampos(textosProveedores);
+            asignarEnterEntreCampos(textosFacturas);
 
         } else if ("Remito".equals(tipo)) {
             camposComprobante.setVisible(true);
@@ -739,5 +791,35 @@ public class AppController {
                 }
             });
         }
+    }
+
+    public static <S, T extends Number> Callback<TableColumn<S, T>, TableCell<S, T>> getDecimalFormatCellFactory() {
+        return column -> new TableCell<S, T>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(String.format(Locale.getDefault(), "%.2f", item.doubleValue()));
+                }
+            }
+        };
+    }
+
+    public static <S, T extends Number> Callback<TableColumn<S, T>, TableCell<S, T>> getCurrencyFormatCellFactory() {
+        return column -> new TableCell<S, T>() {
+            private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("es", "AR")); // Formato para Argentina
+
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(currencyFormat.format(item.doubleValue()));
+                }
+            }
+        };
     }
 }

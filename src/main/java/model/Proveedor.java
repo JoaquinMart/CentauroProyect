@@ -5,18 +5,17 @@ import java.util.List;
 
 public class Proveedor {
     private int id;
-    private String nombre;// Comparte
-    private String razonSocial;// Comparte
-    private String domicilio;// Comparte
-    private String localidad;// Comparte
-    private String codigoPostal;// Comparte
-    private String telefono; // Comparte
-    private String CUIT;// Comparte
+    private String nombre;
+    private String razonSocial;
+    private String domicilio;
+    private String localidad;
+    private String codigoPostal;
+    private String telefono;
+    private String CUIT;
     private String categoria;
     private String contacto;
     private List<CuentaCorriente> cuentaCorrientes;
 
-    // Constructor
     public Proveedor(String nombre, String razonSocial, String domicilio, String localidad, String codigoPostal,
                      String telefono, String CUIT, String categoria, String contacto) {
         this.nombre = nombre;

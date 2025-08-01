@@ -7,12 +7,12 @@ import java.util.ArrayList;
 public class Cliente {
     private int id;
     private String nombre;
-    private String razonSocial;// Comparte
-    private String domicilio;// Comparte
-    private String localidad;// Comparte
-    private String codigoPostal;// Comparte
-    private String telefono; // Comparte
-    private String CUIT;// Comparte
+    private String razonSocial;
+    private String domicilio;
+    private String localidad;
+    private String codigoPostal;
+    private String telefono;
+    private String CUIT;
     private String condicion;
     private LocalDate fechaAlta;
     private String proveedor;
@@ -20,7 +20,6 @@ public class Cliente {
     private List<Comodato> comodato;
     private List<CuentaCorriente> cuentaCorrientes;
 
-    // Constructor
     public Cliente(int ID, String nombre, String razonSocial, String domicilio, String localidad, String codigoPostal,
                    String telefono, String CUIT, String condicion, LocalDate fechaAlta, String proveedor) {
         this.id = ID;
@@ -57,7 +56,6 @@ public class Cliente {
         this.cuentaCorrientes = new ArrayList<>();
     }
 
-    // Getters y Setters
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
@@ -92,14 +90,7 @@ public class Cliente {
     public void setProveedor(String proveedor) { this.proveedor = proveedor; }
 
     public List<CuentaCorriente> getCuentaCorrientes() { return cuentaCorrientes; }
-    public void agregarCuentaCorriente(CuentaCorriente cuentaCorriente) { this.cuentaCorrientes.add(cuentaCorriente); }
     public void setCuentaCorrientes(List<CuentaCorriente> cuentas) { this.cuentaCorrientes = cuentas; }
-
-    public List<String> getFreezer() { return freezer; }
-    public void setFreezer(List<String> freezer) { this.freezer = freezer; }
-
-    public List<Comodato> getComodato() { return comodato; }
-    public void setComodato(List<Comodato> comodato) { this.comodato = comodato; }
 
     @Override
     public String toString() {

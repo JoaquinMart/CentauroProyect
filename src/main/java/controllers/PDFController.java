@@ -50,6 +50,10 @@ public class PDFController {
     private CuentaCorrienteDAO cuentaCorrienteDAO;
     private ProveedorDAO proveedorDAO;
 
+    // Declaración como miembros de clase
+    private DatePicker fechaInicioPickerProveedor;
+    private DatePicker fechaFinPickerProveedor;
+
     public PDFController() {
         this.clienteDAO = new ClienteDAO();
         this.cuentaCorrienteDAO = new CuentaCorrienteDAO();
@@ -59,76 +63,114 @@ public class PDFController {
     public void handleGuardarPdfButton() {
         Stage pdfStage = new Stage();
         pdfStage.setTitle("Generar Reporte de Cuenta Corriente");
-        pdfStage.getIcons().add(new Image("file:src/main/resources/icono.jpg"));
+        pdfStage.getIcons().add(new Image(getClass().getResourceAsStream("/icono.png")));
 
-        // Campos de entrada
+        // Campos de entrada para Clientes
         TextField nombreClienteField = new TextField();
         nombreClienteField.setPromptText("Nombre del Cliente");
         nombreClienteField.setPrefWidth(300);
         nombreClienteField.getStyleClass().add("pdf-input-field");
 
-        DatePicker fechaInicioPicker = new DatePicker();
-        fechaInicioPicker.setPromptText("Fecha Inicio");
-        fechaInicioPicker.setPrefWidth(300);
-        fechaInicioPicker.getStyleClass().add("pdf-date-picker");
+        DatePicker fechaInicioPickerCliente = new DatePicker();
+        fechaInicioPickerCliente.setPromptText("Fecha Inicio");
+        fechaInicioPickerCliente.setPrefWidth(300);
+        fechaInicioPickerCliente.getStyleClass().add("pdf-date-picker");
 
-        DatePicker fechaFinPicker = new DatePicker();
-        fechaFinPicker.setPromptText("Fecha Fin");
-        fechaFinPicker.setPrefWidth(300);
-        fechaFinPicker.getStyleClass().add("pdf-date-picker");
+        DatePicker fechaFinPickerCliente = new DatePicker();
+        fechaFinPickerCliente.setPromptText("Fecha Fin");
+        fechaFinPickerCliente.setPrefWidth(300);
+        fechaFinPickerCliente.getStyleClass().add("pdf-date-picker");
 
-        Button generarPdfButton = new Button("Generar PDF");
-        generarPdfButton.getStyleClass().add("pdf-generate-button");
-        generarPdfButton.setPrefWidth(300);
+        Button generarPdfButtonCliente = new Button("Generar PDF Cliente");
+        generarPdfButtonCliente.getStyleClass().add("pdf-generate-button");
+        generarPdfButtonCliente.setPrefWidth(300);
 
-        // Labels
+        // Labels para Clientes
         Label clienteLabel = new Label("Cliente:");
-        clienteLabel.getStyleClass().add("pdf-label"); // CLASE DE ESTILO
-        Label desdeLabel = new Label("Desde:");
-        desdeLabel.getStyleClass().add("pdf-label"); // CLASE DE ESTILO
-        Label hastaLabel = new Label("Hasta:");
-        hastaLabel.getStyleClass().add("pdf-label");
+        clienteLabel.getStyleClass().add("pdf-label");
+        Label desdeLabelCliente = new Label("Desde:");
+        desdeLabelCliente.getStyleClass().add("pdf-label");
+        Label hastaLabelCliente = new Label("Hasta:");
+        hastaLabelCliente.getStyleClass().add("pdf-label");
 
-        // Creamos VBox para agrupar Label y su campo de entrada
-        VBox clienteVBox = new VBox(5); // Espacio de 5 entre label y textfield
-        clienteVBox.setAlignment(Pos.TOP_LEFT); // Alineación de los elementos en el VBox
+        // VBox para agrupar Label y su campo de entrada para Clientes
+        VBox clienteVBox = new VBox(5);
+        clienteVBox.setAlignment(Pos.TOP_LEFT);
         clienteVBox.getChildren().addAll(clienteLabel, nombreClienteField);
 
-        VBox desdeVBox = new VBox(5);
-        desdeVBox.setAlignment(Pos.TOP_LEFT);
-        desdeVBox.getChildren().addAll(desdeLabel, fechaInicioPicker);
+        VBox desdeVBoxCliente = new VBox(5);
+        desdeVBoxCliente.setAlignment(Pos.TOP_LEFT);
+        desdeVBoxCliente.getChildren().addAll(desdeLabelCliente, fechaInicioPickerCliente);
 
-        VBox hastaVBox = new VBox(5);
-        hastaVBox.setAlignment(Pos.TOP_LEFT);
-        hastaVBox.getChildren().addAll(hastaLabel, fechaFinPicker);
+        VBox hastaVBoxCliente = new VBox(5);
+        hastaVBoxCliente.setAlignment(Pos.TOP_LEFT);
+        hastaVBoxCliente.getChildren().addAll(hastaLabelCliente, fechaFinPickerCliente);
 
-        // Layout para los campos de entrada y el botón
-        HBox inputLayout = new HBox(10);
-        inputLayout.getStyleClass().add("pdf-input-layout");
-        inputLayout.setPadding(new Insets(15));
-        inputLayout.setAlignment(Pos.CENTER);
-        inputLayout.getChildren().addAll(
+        // Layout para los campos de entrada y el botón de Clientes
+        HBox inputLayoutCliente = new HBox(10);
+        inputLayoutCliente.getStyleClass().add("pdf-input-layout");
+        inputLayoutCliente.setPadding(new Insets(15));
+        inputLayoutCliente.setAlignment(Pos.CENTER);
+        inputLayoutCliente.getChildren().addAll(
                 clienteVBox,
-                desdeVBox,
-                hastaVBox,
-                generarPdfButton
+                desdeVBoxCliente,
+                hastaVBoxCliente,
+                generarPdfButtonCliente
         );
 
         // --------------- Componentes para el reporte de Proveedores ---------------
-        Button generarPdfProveedoresFacturasButton = new Button("Generar PDF Proveedores Facturas"); // Nuevo botón
-        generarPdfProveedoresFacturasButton.getStyleClass().add("pdf-generate-button");
-        generarPdfProveedoresFacturasButton.setPrefWidth(400); // Un poco más ancho para el texto
+        Label tituloProveedores = new Label("Reporte de Facturas por Proveedor");
+        tituloProveedores.getStyleClass().add("pdf-label");
+        tituloProveedores.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 10 0 5 0;");
 
+        // Inicialización de los DatePickers de Proveedores (ahora son miembros de clase)
+        fechaInicioPickerProveedor = new DatePicker();
+        fechaInicioPickerProveedor.setPromptText("Fecha Inicio Proveedor");
+        fechaInicioPickerProveedor.setPrefWidth(300);
+        fechaInicioPickerProveedor.getStyleClass().add("pdf-date-picker");
+
+        fechaFinPickerProveedor = new DatePicker();
+        fechaFinPickerProveedor.setPromptText("Fecha Fin Proveedor");
+        fechaFinPickerProveedor.setPrefWidth(300);
+        fechaFinPickerProveedor.getStyleClass().add("pdf-date-picker");
+
+        Button generarPdfProveedoresFacturasButton = new Button("Generar PDF Proveedores Facturas");
+        generarPdfProveedoresFacturasButton.getStyleClass().add("pdf-generate-button");
+        generarPdfProveedoresFacturasButton.setPrefWidth(400);
+
+        Label desdeLabelProveedor = new Label("Desde:");
+        desdeLabelProveedor.getStyleClass().add("pdf-label");
+        Label hastaLabelProveedor = new Label("Hasta:");
+        hastaLabelProveedor.getStyleClass().add("pdf-label");
+
+        VBox desdeVBoxProveedor = new VBox(5);
+        desdeVBoxProveedor.setAlignment(Pos.TOP_LEFT);
+        desdeVBoxProveedor.getChildren().addAll(desdeLabelProveedor, fechaInicioPickerProveedor);
+
+        VBox hastaVBoxProveedor = new VBox(5);
+        hastaVBoxProveedor.setAlignment(Pos.TOP_LEFT);
+        hastaVBoxProveedor.getChildren().addAll(hastaLabelProveedor, fechaFinPickerProveedor);
+
+        HBox inputLayoutProveedor = new HBox(10);
+        inputLayoutProveedor.getStyleClass().add("pdf-input-layout");
+        inputLayoutProveedor.setPadding(new Insets(15));
+        inputLayoutProveedor.setAlignment(Pos.CENTER);
+        inputLayoutProveedor.getChildren().addAll(
+                desdeVBoxProveedor,
+                hastaVBoxProveedor,
+                generarPdfProveedoresFacturasButton
+        );
         // --------------- Fin Componentes para el reporte de Proveedores ---------------
+
 
         // Contenedor principal para la escena
         VBox pdfRoot = new VBox(20);
         pdfRoot.getStyleClass().add("pdf-root-pane");
         pdfRoot.setAlignment(Pos.TOP_CENTER);
         pdfRoot.setPadding(new Insets(20));
-        pdfRoot.getChildren().addAll(inputLayout, generarPdfProveedoresFacturasButton);
+        pdfRoot.getChildren().addAll(inputLayoutCliente, new Label(""), tituloProveedores, inputLayoutProveedor); // Añadir los componentes de proveedores
 
-        Scene pdfScene = new Scene(pdfRoot, 1000, 300);
+        Scene pdfScene = new Scene(pdfRoot, 1000, 450); // Aumentar alto para nuevos componentes
         try {
             pdfScene.getStylesheets().add(getClass().getResource("/stylePDF.css").toExternalForm());
         } catch (NullPointerException e) {
@@ -137,13 +179,13 @@ public class PDFController {
         pdfStage.setScene(pdfScene);
         pdfStage.show();
 
-        new CSSFileWatcherPDF("src/main/resources/stylePDF.css", pdfScene).start();
+//        new CSSFileWatcherPDF("src/main/resources/stylePDF.css", pdfScene).start();
 
-        // Lógica del botón Generar PDF
-        generarPdfButton.setOnAction(event -> {
+        // Lógica del botón Generar PDF (Clientes)
+        generarPdfButtonCliente.setOnAction(event -> {
             String nombreCliente = nombreClienteField.getText();
-            LocalDate fechaInicio = fechaInicioPicker.getValue();
-            LocalDate fechaFin = fechaFinPicker.getValue();
+            LocalDate fechaInicio = fechaInicioPickerCliente.getValue();
+            LocalDate fechaFin = fechaFinPickerCliente.getValue();
 
             // Validaciones básicas
             if (nombreCliente.isEmpty()) {
@@ -151,11 +193,11 @@ public class PDFController {
                 return;
             }
             if (fechaInicio == null || fechaFin == null) {
-                mostrarAlerta(Alert.AlertType.ERROR, "Error de Validación", "Ambas fechas (Inicio y Fin) deben ser seleccionadas.");
+                mostrarAlerta(Alert.AlertType.ERROR, "Error de Validación", "Ambas fechas (Inicio y Fin) deben ser seleccionadas para el reporte de cliente.");
                 return;
             }
             if (fechaInicio.isAfter(fechaFin)) {
-                mostrarAlerta(Alert.AlertType.ERROR, "Error de Validación", "La fecha de inicio no puede ser posterior a la fecha de fin.");
+                mostrarAlerta(Alert.AlertType.ERROR, "Error de Validación", "La fecha de inicio no puede ser posterior a la fecha de fin para el reporte de cliente.");
                 return;
             }
 
@@ -194,21 +236,18 @@ public class PDFController {
                         mostrarAlerta(Alert.AlertType.INFORMATION, "PDF Generado", "El reporte de cuenta corriente se ha generado exitosamente en:\n" + file.getAbsolutePath());
                         pdfStage.close();
 
-                        // --- LÓGICA PARA ABRIR EL PDF AUTOMÁTICAMENTE ---
-                        if (Desktop.isDesktopSupported()) { // Verifica si la API de Desktop es compatible con el sistema
-                            new Thread(() -> { // Se ejecuta en un nuevo hilo para no bloquear la interfaz de usuario
+                        if (Desktop.isDesktopSupported()) {
+                            new Thread(() -> {
                                 try {
-                                    Desktop.getDesktop().open(file); // Abre el archivo PDF
+                                    Desktop.getDesktop().open(file);
                                 } catch (IOException e) {
                                     System.err.println("Error al intentar abrir el PDF: " + e.getMessage());
-                                    // Muestra una alerta en el hilo de JavaFX si no se puede abrir el PDF
                                     Platform.runLater(() -> mostrarAlerta(Alert.AlertType.ERROR, "Error al Abrir PDF", "No se pudo abrir el PDF automáticamente. Por favor, ábrelo manualmente desde:\n" + file.getAbsolutePath()));
                                 }
-                            }).start(); // Inicia el nuevo hilo
+                            }).start();
                         } else {
                             System.out.println("Desktop API no soportada en este sistema. No se puede abrir el PDF automáticamente.");
                         }
-                        // --- FIN LÓGICA PARA ABRIR EL PDF AUTOMÁTICAMENTE ---
 
                     } catch (IOException e) {
                         System.err.println("Error al generar el PDF: " + e.getMessage());
@@ -221,8 +260,27 @@ public class PDFController {
             }
         });
 
+        // Lógica del botón Generar PDF (Proveedores)
         generarPdfProveedoresFacturasButton.setOnAction(event -> {
-            handleGenerarPdfProveedoresFacturas(pdfStage); // Llama al nuevo método handler
+            LocalDate fechaInicio = fechaInicioPickerProveedor.getValue();
+            LocalDate fechaFin = fechaFinPickerProveedor.getValue();
+
+            if (fechaInicio == null || fechaFin == null) {
+                mostrarAlerta(Alert.AlertType.ERROR, "Error de Validación", "Ambas fechas (Inicio y Fin) deben ser seleccionadas para el reporte de proveedores.");
+                return;
+            }
+            if (fechaInicio.isAfter(fechaFin)) {
+                mostrarAlerta(Alert.AlertType.ERROR, "Error de Validación", "La fecha de inicio no puede ser posterior a la fecha de fin para el reporte de proveedores.");
+                return;
+            }
+
+            try { // Añadido try-catch para manejar IOException
+                handleGenerarPdfProveedoresFacturas(pdfStage, fechaInicio, fechaFin);
+            } catch (IOException e) {
+                System.err.println("Error al manejar la generación del PDF de proveedores: " + e.getMessage());
+                e.printStackTrace();
+                mostrarAlerta(Alert.AlertType.ERROR, "Error de Generación", "Ocurrió un error al intentar generar el PDF de facturas de proveedores: " + e.getMessage());
+            }
         });
     }
 
@@ -235,20 +293,16 @@ public class PDFController {
     }
 
     private void generateCuentaCorrientePdf(List<CuentaCorriente> movimientos, Cliente cliente, LocalDate fechaInicio, LocalDate fechaFin, String outputPath) throws IOException {
-        // Inicialización de fuentes para CADA NUEVO DOCUMENTO PDF
         PdfFont FONT_NORMAL;
         PdfFont FONT_BOLD;
-        PdfFont FONT_ITALIC;
 
         try {
             FONT_NORMAL = PdfFontFactory.createFont(StandardFonts.HELVETICA);
             FONT_BOLD = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-            FONT_ITALIC = PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE);
         } catch (IOException e) {
             System.err.println("Error al cargar las fuentes PDF en el método generateCuentaCorrientePdf: " + e.getMessage());
             FONT_NORMAL = PdfFontFactory.createFont(StandardFonts.HELVETICA); // Fallback
             FONT_BOLD = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD); // Fallback
-            FONT_ITALIC = PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE); // Fallback
         }
 
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -286,7 +340,6 @@ public class PDFController {
                 .setMarginBottom(15));
 
         // -- Tabla de movimientos --
-        // 7 columnas (sin ID, Neto, IVA)
         Table table = new Table(UnitValue.createPercentArray(new float[]{1.2f, 0.8f, 1.5f, 1f, 1f, 1.2f, 2.5f}));
         table.setWidth(UnitValue.createPercentValue(100));
         table.setMarginBottom(10);
@@ -342,22 +395,24 @@ public class PDFController {
         document.close();
     }
 
-    private void handleGenerarPdfProveedoresFacturas(Stage parentStage) {
+    // Modificación: se agregó 'throws IOException' a la firma del método
+    private void handleGenerarPdfProveedoresFacturas(Stage parentStage, LocalDate fechaInicio, LocalDate fechaFin) throws IOException {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Guardar Reporte de Facturas por Proveedor");
         FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("Archivos PDF (*.pdf)", "*.pdf");
         fileChooser.getExtensionFilters().add(extFilter);
-        fileChooser.setInitialFileName("reporte_facturas_proveedores_" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf");
+        fileChooser.setInitialFileName("reporte_facturas_proveedores_" +
+                fechaInicio.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "_" +
+                fechaFin.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf"); // Nombre con fechas
 
         File file = fileChooser.showSaveDialog(parentStage);
 
         if (file != null) {
             try {
-                generateProveedoresFacturasPdf(file.getAbsolutePath()); // Llama al método de generación
+                // Modificación: se pasan las fechas a generateProveedoresFacturasPdf
+                generateProveedoresFacturasPdf(file.getAbsolutePath(), fechaInicio, fechaFin);
 
                 mostrarAlerta(Alert.AlertType.INFORMATION, "PDF Generado", "El reporte de facturas por proveedor se ha generado exitosamente en:\n" + file.getAbsolutePath());
-                // parentStage.close(); // Decisión: ¿cierras la ventana de diálogo o la mantienes abierta?
-                // La he comentado para permitir al usuario generar múltiples reportes.
 
                 if (Desktop.isDesktopSupported()) {
                     new Thread(() -> {
@@ -375,17 +430,16 @@ public class PDFController {
             } catch (IOException e) {
                 System.err.println("Error al generar el PDF de facturas por proveedor: " + e.getMessage());
                 e.printStackTrace();
-                mostrarAlerta(Alert.AlertType.ERROR, "Error al Generar PDF", "Hubo un error al generar el PDF de facturas por proveedor: " + e.getMessage());
+                // Relanzar la excepción para que sea manejada por el llamador
+                throw e;
             }
         } else {
             mostrarAlerta(Alert.AlertType.INFORMATION, "Generación Cancelada", "La generación del PDF de facturas por proveedor ha sido cancelada.");
         }
     }
 
-    // --------------------------------------------------------------------------------------------------
-    // ¡NUEVO MÉTODO para generar el PDF de Facturas por Proveedor!
-    // --------------------------------------------------------------------------------------------------
-    private void generateProveedoresFacturasPdf(String outputPath) throws IOException {
+    // Modificación: se agregaron los parámetros fechaInicio y fechaFin
+    private void generateProveedoresFacturasPdf(String outputPath, LocalDate fechaInicio, LocalDate fechaFin) throws IOException {
         PdfFont FONT_NORMAL;
         PdfFont FONT_BOLD;
         PdfFont FONT_ITALIC;
@@ -405,30 +459,35 @@ public class PDFController {
 
         PdfWriter writer = new PdfWriter(outputPath);
         PdfDocument pdf = new PdfDocument(writer);
-        Document document = new Document(pdf, PageSize.A4); // Tamaño A4 estándar, puedes usar A4.rotate() si lo prefieres ancho
+        Document document = new Document(pdf, PageSize.A4);
 
-        document.setMargins(30, 30, 30, 30); // Márgenes
+        document.setMargins(30, 30, 30, 30);
 
-        // Título principal del documento
         document.add(new Paragraph("Reporte de Facturas por Proveedor")
                 .setFont(FONT_BOLD)
                 .setFontSize(20)
                 .setTextAlignment(TextAlignment.CENTER)
                 .setMarginBottom(20));
 
-        // Obtener todos los proveedores
-        List<Proveedor> proveedores = null; // Inicializar a null
+        // Añadir el rango de fechas al título del reporte
+        document.add(new Paragraph(
+                "Período: " + fechaInicio.format(dateFormatter) + " - " + fechaFin.format(dateFormatter))
+                .setFont(FONT_NORMAL)
+                .setFontSize(10)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(15));
+
+
+        List<Proveedor> proveedores = null;
 
         try {
-            // Obtener todos los proveedores
-            // ¡Aquí se llama al método de instancia en el objeto `proveedorDAO`!
             proveedores = proveedorDAO.obtenerTodosLosProveedores();
         } catch (SQLException e) {
             System.err.println("Error de base de datos al obtener proveedores: " + e.getMessage());
             mostrarAlerta(Alert.AlertType.ERROR, "Error de Base de Datos", "No se pudieron cargar los proveedores debido a un error en la base de datos.");
             document.add(new Paragraph("Error: No se pudieron cargar los datos de los proveedores."));
             document.close();
-            return; // Salir del método si hay un error de base de datos
+            return;
         }
         if (proveedores.isEmpty()) {
             document.add(new Paragraph("No se encontraron proveedores para generar el reporte de facturas.")
@@ -437,43 +496,39 @@ public class PDFController {
                     .setTextAlignment(TextAlignment.CENTER));
         } else {
             for (Proveedor proveedor : proveedores) {
-                // Información del proveedor
                 document.add(new Paragraph("PROVEEDOR: " + proveedor.getNombre() + " (CUIT: " + (proveedor.getCUIT() != null ? proveedor.getCUIT() : "N/A") + ")")
                         .setFont(FONT_BOLD)
                         .setFontSize(14)
-                        .setMarginTop(20) // Espacio antes de cada nuevo proveedor
+                        .setMarginTop(20)
                         .setMarginBottom(10)
                         .setTextAlignment(TextAlignment.LEFT));
 
-                // Obtener facturas para este proveedor usando el método actualizado
-                List<CuentaCorriente> facturas = cuentaCorrienteDAO.obtenerMovimientosPorProveedorYTipo(proveedor.getId(), "Factura"); // ¡Aquí se llama con "Factura"!
+                // Modificación: Llamar a un nuevo método en CuentaCorrienteDAO que incluya el filtro por fechas
+                List<CuentaCorriente> facturas = cuentaCorrienteDAO.obtenerMovimientosPorProveedorYTipoYFechas(proveedor.getId(), "Factura", fechaInicio, fechaFin);
 
                 if (facturas.isEmpty()) {
-                    document.add(new Paragraph("  - Sin facturas registradas para este proveedor.")
+                    document.add(new Paragraph("  - Sin facturas registradas para este proveedor en el período seleccionado.")
                             .setFont(FONT_ITALIC)
                             .setFontSize(10)
                             .setMarginLeft(20)
                             .setMarginBottom(10));
                 } else {
-                    // Tabla para las facturas del proveedor
-                    Table facturasTable = new Table(UnitValue.createPercentArray(new float[]{1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 2f})); // Columnas: Fecha, Tipo, Comprobante, Monto, Saldo, Observación
-                    facturasTable.setWidth(UnitValue.createPercentValue(100)); // Un poco menos ancho para margen
+                    Table facturasTable = new Table(UnitValue.createPercentArray(new float[]{1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 2f}));
+                    facturasTable.setWidth(UnitValue.createPercentValue(100));
                     facturasTable.setMarginLeft(20);
                     facturasTable.setMarginBottom(15);
 
-                    // Cabecera de la tabla de facturas
                     String[] facturaHeaders = {"Fecha", "N°Factura", "Tipo", "Neto", "IVA", "Otros", "Monto", "Saldo", "Observación"};
                     for (String header : facturaHeaders) {
                         facturasTable.addHeaderCell(new Cell().add(new Paragraph(header)
                                         .setFont(FONT_BOLD)
                                         .setFontSize(9)
                                         .setFontColor(com.itextpdf.kernel.colors.ColorConstants.WHITE))
-                                .setBackgroundColor(new DeviceRgb(70, 130, 180)) // Otro color para diferenciar
+                                .setBackgroundColor(new DeviceRgb(70, 130, 180))
                                 .setTextAlignment(TextAlignment.CENTER)
                                 .setPadding(4));
                     }
 
-                    // Filas de datos de facturas
                     for (CuentaCorriente factura : facturas) {
                         facturasTable.addCell(new Cell().add(new Paragraph(factura.getFecha().format(dateFormatter))
                                 .setFont(FONT_NORMAL)
@@ -508,7 +563,6 @@ public class PDFController {
             }
         }
 
-        // Pie de página general del reporte de proveedores
         document.add(new Paragraph(
                 "Reporte de Facturas por Proveedor generado el: " + LocalDate.now().format(dateFormatter) + " a las " +
                         java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")))

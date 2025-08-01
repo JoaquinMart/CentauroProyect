@@ -86,24 +86,10 @@ public class ClienteDAO {
 
     // Método para eliminar cliente
     public void eliminarCliente(String nombre) {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            System.out.println("El nombre ingresado no es válido.");
-            return;
-        }
-
         String sql = "DELETE FROM Clientes WHERE nombre = ?";
 
         try (Connection conn = ConexionMySQL.conectar();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            System.out.println("¿Está seguro que desea eliminar al cliente '" + nombre + "'? (s/n)");
-            Scanner sc = new Scanner(System.in);
-            String confirm = sc.nextLine();
-
-            if (!confirm.equalsIgnoreCase("s")) {
-                System.out.println("Operación cancelada.");
-                return;
-            }
 
             pstmt.setString(1, nombre);
             int rowsAffected = pstmt.executeUpdate();

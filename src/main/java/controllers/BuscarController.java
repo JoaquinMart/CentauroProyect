@@ -1,6 +1,7 @@
 package controllers;
 
 import javafx.scene.text.Text;
+import main.AppController;
 import model.*;
 import dao.*;
 
@@ -22,8 +23,8 @@ public class BuscarController {
 
     public void handleBotonBuscar(
             TextField buscarNombreField,
-            TableView<CuentaCorriente> tablaCuentas, // Ahora recibimos la tabla de clientes
-            TableView<CuentaCorriente> tablaProveedores, // Y la nueva tabla de proveedores
+            TableView<CuentaCorriente> tablaCuentas,
+            TableView<CuentaCorriente> tablaProveedores,
             TextFlow resumenClienteText,
             Alert alerta
     ) {
@@ -35,28 +36,7 @@ public class BuscarController {
             return;
         }
 
-        // LLAMAR AL MÉTODO ACTUALIZADO
-        mostrarCuentasYResumen(nombre, tablaCuentas, tablaProveedores, resumenClienteText); // Pasa ambas tablas
-
-        // El setRowFactory debe aplicarse a la tabla que esté actualmente visible o a ambas
-        // Es mejor hacerlo dentro de mostrarCuentasYResumen para asegurarse de que se aplica a la tabla correcta
-        // o aplicar a ambas y que se active solo cuando la tabla esté visible.
-        // Por simplicidad, lo moveremos o lo haremos específico en mostrarCuentasYResumen.
-        // Por ahora, lo dejaré comentado aquí, lo ajustaremos en el método.
-        /*
-        if (!tablaCuentas.getItems().isEmpty()) { // Esto solo se aplica a tablaCuentas
-            tablaCuentas.setRowFactory(tv -> {
-                TableRow<CuentaCorriente> row = new TableRow<>();
-                row.setOnMouseClicked(event -> {
-                    if (event.getClickCount() == 2 && (!row.isEmpty())) {
-                        CuentaCorriente cuentaSeleccionada = row.getItem();
-                        mostrarVentanaComprobantes(cuentaSeleccionada.getId(), cuentaSeleccionada.getFecha().format(formatter), nombre);
-                    }
-                });
-                return row;
-            });
-        }
-        */
+        mostrarCuentasYResumen(nombre, tablaCuentas, tablaProveedores, resumenClienteText);
 
         buscarNombreField.clear();
     }
@@ -72,25 +52,29 @@ public class BuscarController {
 
         TableColumn<Comprobante, String> cantidadCol = new TableColumn<>("Cantidad");
         cantidadCol.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
+        cantidadCol.getStyleClass().add("custom-table-column");
 
         TableColumn<Comprobante, String> productoCol = new TableColumn<>("Producto");
         productoCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+        productoCol.getStyleClass().add("custom-table-column");
 
         TableColumn<Comprobante, Number> totalCol = new TableColumn<>("Precio Unitario");
         totalCol.setCellValueFactory(data -> {
             int cantidad = data.getValue().getCantidad();
-            // Asumiendo que el precio en Comprobante es el precio total del item (cantidad * precio_unitario)
-            // Si precio es el precio unitario, entonces sería: return new SimpleDoubleProperty(data.getValue().getPrecio());
-            double precio = data.getValue().getPrecio(); // Precio total del item
+            double precio = data.getValue().getPrecio();
             return new javafx.beans.property.SimpleDoubleProperty(precio / cantidad);
         });
+        totalCol.getStyleClass().add("custom-table-column");
 
-        TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Total"); // Este es el total del item
+        TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Total");
         precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
+        precioCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
+        precioCol.getStyleClass().add("custom-table-column");
 
         tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, totalCol, precioCol);
         tablaComprobantes.getItems().addAll(comprobantes);
         tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tablaComprobantes.getStyleClass().add("main-table");
 
         double totalGeneral = comprobantes.stream()
                 .mapToDouble(c -> c.getPrecio()) // Suma el precio total de cada comprobante
@@ -102,7 +86,8 @@ public class BuscarController {
         VBox layout = new VBox(10, new Label("Comprobantes:"), tablaComprobantes, totalLabel);
         layout.setPadding(new Insets(10));
 
-        Scene escena = new Scene(layout, 800, 600);
+        Scene escena = new Scene(layout, 900, 600);
+        escena.getStylesheets().add(getClass().getResource("/style.css").toExternalForm()); // Ruta relativa
         ventana.setScene(escena);
         ventana.initModality(Modality.APPLICATION_MODAL);
         ventana.showAndWait();

@@ -8,6 +8,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.TextFlow;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import main.AppController;
 import model.*;
 import dao.*;
 
@@ -149,16 +150,15 @@ public class EjecutarController {
                     String desc = getText(observacionField);
 
                     if (!verificarCampos(
-                            new String[]{fecha, comprobante, tipoCC, netoCC, montoStr, nombrePersona},
-                            new String[]{"Fecha", "Comprobante", "Tipo", "Neto", "Monto", "Nombre"}
+                            new String[]{fecha, nombrePersona},
+                            new String[]{"Fecha", "Nombre"}
                     )) return;
 
                     try {
-                        double neto = Double.parseDouble(netoCC);
-                        // MODIFICACIÓN AQUÍ: Parsea IVA y Otros, si están vacíos, usa 0.0
+                        double neto = netoCC.isEmpty() ? 0.0 : Double.parseDouble(netoCC);
                         double iva = ivaCC.isEmpty() ? 0.0 : Double.parseDouble(ivaCC);
                         double otros = otrosCC.isEmpty() ? 0.0 : Double.parseDouble(otrosCC);
-                        double monto = Double.parseDouble(montoStr);
+                        double monto = montoStr.isEmpty() ? 0.0 : Double.parseDouble(montoStr);
                         LocalDate fechaLocalDate = LocalDate.parse(fecha, formatter);
 
                         // Declaramos las variables que pueden cambiar su valor
@@ -202,6 +202,18 @@ public class EjecutarController {
                             info.showAndWait();
                             BuscarController buscador = new BuscarController();
                             buscador.mostrarCuentasYResumen(nombrePersona, tablaCuentas, tablaProveedores, resumenClienteText);
+
+                            // --- INICIO DE CAMBIOS PARA LIMPIAR CAMPOS (CLIENTE) ---
+                            fechaField.clear(); // Limpiar DatePicker
+                            comprobanteField.clear(); // Limpiar TextField
+                            tipoField.clear();        // Limpiar TextField
+                            netoField.clear();        // Limpiar TextField
+                            ivaField.clear();         // Limpiar TextField
+                            otrosField.clear();       // Limpiar TextField
+                            montoField.clear();       // Limpiar TextField
+                            observacionField.clear(); // Limpiar TextField
+                            // --- FIN DE CAMBIOS PARA LIMPIAR CAMPOS (CLIENTE) ---
+
                             return;
                         }
 
@@ -236,6 +248,18 @@ public class EjecutarController {
                             info.setTitle("Éxito");
                             info.setContentText("Cuenta Corriente agregada al Proveedor: " + proveedor.getNombre());
                             info.showAndWait();
+
+                            // --- INICIO DE CAMBIOS PARA LIMPIAR CAMPOS (PROVEEDOR) ---
+                            fechaField.clear(); // Limpiar DatePicker
+                            comprobanteField.clear(); // Limpiar TextField
+                            tipoField.clear();        // Limpiar TextField
+                            netoField.clear();        // Limpiar TextField
+                            ivaField.clear();         // Limpiar TextField
+                            otrosField.clear();       // Limpiar TextField
+                            montoField.clear();       // Limpiar TextField
+                            observacionField.clear(); // Limpiar TextField
+                            // --- FIN DE CAMBIOS PARA LIMPIAR CAMPOS (PROVEEDOR) ---
+
                             return;
                         }
 
@@ -639,14 +663,10 @@ public class EjecutarController {
                         Optional<ButtonType> result = advertencia.showAndWait();
 
                         if (result.isPresent() && result.get() == ButtonType.OK) {
-                            // Aplicar modificaciones solo si el campo no está vacío
-                            String nuevoNombre = getText(nombreField); // Obtener el valor actual del campo de nombre
-                            if (!nuevoNombre.isEmpty()) { // Si el usuario ingresó un nuevo nombre (o lo dejó igual pero lo re-escribió)
+                            String nuevoNombre = getText(nombreField);
+                            if (!nuevoNombre.isEmpty()) {
                                 existente.setNombre(nuevoNombre);
                             }
-                            // Si el usuario deja el campo de nombre vacío, el nombre existente NO SE MODIFICA.
-                            // Considera si este es el comportamiento deseado, o si debería requerir el nombre siempre.
-                            // Si el nombre es el identificador único, no debería poder dejarse vacío al buscar/modificar.
 
                             String razonSocial = getText(razonField);
                             if (!razonSocial.isEmpty()) {
@@ -866,8 +886,6 @@ public class EjecutarController {
             alerta.setContentText("Error: " + ex.getMessage());
             alerta.showAndWait();
         }
-        // Aquí va TODO el código que está en el setOnAction.
-        // Recuerda usar getText() y verificarCampos() como métodos auxiliares de esta clase o que te provean.
     }
 
     private void mostrarError(String mensaje) {
@@ -918,6 +936,7 @@ public class EjecutarController {
 
         TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Total");
         precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
+        precioCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
 
         tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, totalCol, precioCol);
         tablaComprobantes.getItems().addAll(comprobantes);
@@ -963,6 +982,7 @@ public class EjecutarController {
             double precio = data.getValue().getPrecio();
             return new javafx.beans.property.SimpleDoubleProperty(precio * cantidad);
         });
+        totalCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
 
         tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, precioCol, totalCol);
         tablaComprobantes.getItems().addAll(comprobantes);

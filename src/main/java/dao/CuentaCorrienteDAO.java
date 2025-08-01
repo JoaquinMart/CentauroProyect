@@ -389,15 +389,18 @@ public class CuentaCorrienteDAO {
         return movimientos;
     }
 
-    public List<CuentaCorriente> obtenerMovimientosPorProveedorYTipo(int proveedorId, String tipoMovimiento) {
+    public List<CuentaCorriente> obtenerMovimientosPorProveedorYTipoYFechas(int idProveedor, String tipoMovimiento, LocalDate fechaInicio, LocalDate fechaFin) {
         List<CuentaCorriente> movimientos = new ArrayList<>();
-        // Convertimos ambos a minúsculas (o mayúsculas) para una comparación insensible a case
-        String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND LOWER(tipo) = LOWER(?) ORDER BY fecha ASC";
-        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
+        // Query para filtrar por id_proveedor, tipo y rango de fechas
+        String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND LOWER(tipo) = LOWER(?) AND fecha BETWEEN ? AND ? ORDER BY fecha ASC";
+        ComprobanteDAO comprobanteDAO = new ComprobanteDAO(); // Instancia para cargar comprobantes asociados
 
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setInt(1, proveedorId);
+            pstmt.setInt(1, idProveedor);
             pstmt.setString(2, tipoMovimiento);
+            pstmt.setDate(3, java.sql.Date.valueOf(fechaInicio)); // Convierte LocalDate a java.sql.Date
+            pstmt.setDate(4, java.sql.Date.valueOf(fechaFin));     // Convierte LocalDate a java.sql.Date
+
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt("id");
@@ -414,7 +417,8 @@ public class CuentaCorrienteDAO {
 
                     CuentaCorriente cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo,
                             observacion, neto, iva, otros);
-                    cuenta.setProveedorId(proveedorId);
+                    // Asegúrate de establecer el ID del proveedor, ya que es relevante para este método
+                    cuenta.setProveedorId(idProveedor);
 
                     // Cargar comprobantes asociados (si tu lógica lo requiere)
                     List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);
@@ -424,7 +428,7 @@ public class CuentaCorrienteDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error al obtener movimientos de cuenta corriente por proveedor y tipo: " + e.getMessage());
+            System.err.println("Error al obtener movimientos de cuenta corriente por proveedor, tipo y fechas: " + e.getMessage());
             e.printStackTrace();
         }
         return movimientos;
