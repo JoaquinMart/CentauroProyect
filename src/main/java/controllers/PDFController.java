@@ -2,7 +2,7 @@ package controllers;
 
 import dao.*;
 import model.*;
-
+import services.PdfReportService;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -17,7 +17,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser;
-import javafx.application.Platform; // Importación para Platform.runLater
+import javafx.application.Platform;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -25,39 +25,28 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.io.IOException;
 import java.io.File;
-import java.awt.Desktop; // ¡NUEVA IMPORTACIÓN! Para abrir archivos
-
-// -- Importaciones de iText 7 --
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.element.Cell;
-import com.itextpdf.layout.properties.UnitValue;
-import com.itextpdf.layout.properties.TextAlignment;
-import com.itextpdf.kernel.font.PdfFont;
-import com.itextpdf.kernel.font.PdfFontFactory;
-import com.itextpdf.io.font.constants.StandardFonts;
-import com.itextpdf.kernel.colors.DeviceRgb;
-import com.itextpdf.kernel.geom.PageSize;
-import util.CSSFileWatcherPDF;
-// -- Fin de Importaciones de iText 7 --
+import java.awt.Desktop;
 
 public class PDFController {
 
     private ClienteDAO clienteDAO;
     private CuentaCorrienteDAO cuentaCorrienteDAO;
     private ProveedorDAO proveedorDAO;
+    private PdfReportService pdfReportService;
 
-    // Declaración como miembros de clase
     private DatePicker fechaInicioPickerProveedor;
     private DatePicker fechaFinPickerProveedor;
 
     public PDFController() {
-        this.clienteDAO = new ClienteDAO();
-        this.cuentaCorrienteDAO = new CuentaCorrienteDAO();
-        this.proveedorDAO = new ProveedorDAO();
+        try {
+            this.clienteDAO = new ClienteDAO();
+            this.cuentaCorrienteDAO = new CuentaCorrienteDAO();
+            this.proveedorDAO = new ProveedorDAO();
+            this.pdfReportService = new PdfReportService(clienteDAO, cuentaCorrienteDAO, proveedorDAO);
+        } catch (SQLException e) {
+            System.err.println("Error initializing DAOs: " + e.getMessage());
+            mostrarAlerta(Alert.AlertType.ERROR, "Error de Conexión", "No se pudo conectar a la base de datos o inicializar los servicios.");
+        }
     }
 
     public void handleGuardarPdfButton() {
@@ -179,8 +168,6 @@ public class PDFController {
         pdfStage.setScene(pdfScene);
         pdfStage.show();
 
-//        new CSSFileWatcherPDF("src/main/resources/stylePDF.css", pdfScene).start();
-
         // Lógica del botón Generar PDF (Clientes)
         generarPdfButtonCliente.setOnAction(event -> {
             String nombreCliente = nombreClienteField.getText();
@@ -202,7 +189,15 @@ public class PDFController {
             }
 
             // 1. Buscar el ID del cliente por su nombre
-            Cliente cliente = clienteDAO.obtenerClientePorNombre(nombreCliente);
+            Cliente cliente = null;
+            try {
+                cliente = clienteDAO.obtenerClientePorNombre(nombreCliente);
+            } catch (SQLException e) {
+                System.err.println("Error de base de datos al obtener cliente: " + e.getMessage());
+                mostrarAlerta(Alert.AlertType.ERROR, "Error de Base de Datos", "Ocurrió un error al acceder a la base de datos para buscar el cliente.");
+                return;
+            }
+
             if (cliente == null) {
                 mostrarAlerta(Alert.AlertType.ERROR, "Cliente No Encontrado", "No se encontró ningún cliente con el nombre '" + nombreCliente + "'. Por favor, verifica el nombre.");
                 return;
@@ -210,7 +205,15 @@ public class PDFController {
             int clienteId = cliente.getId();
 
             // 2. Obtener los movimientos de cuenta corriente
-            List<CuentaCorriente> movimientos = cuentaCorrienteDAO.obtenerMovimientosPorClienteYFechas(clienteId, fechaInicio, fechaFin);
+            List<CuentaCorriente> movimientos = null;
+            try {
+                movimientos = cuentaCorrienteDAO.obtenerMovimientosPorClienteYFechas(clienteId, fechaInicio, fechaFin);
+            } catch (SQLException e) {
+                System.err.println("Error de base de datos al obtener movimientos del cliente: " + e.getMessage());
+                mostrarAlerta(Alert.AlertType.ERROR, "Error de Base de Datos", "Ocurrió un error al acceder a la base de datos para los movimientos del cliente.");
+                return;
+            }
+
 
             if (movimientos.isEmpty()) {
                 mostrarAlerta(Alert.AlertType.INFORMATION, "Sin Movimientos", "No se encontraron movimientos de cuenta corriente para el cliente '" + nombreCliente + "' en el rango de fechas seleccionado.");
@@ -231,28 +234,18 @@ public class PDFController {
 
                 if (file != null) {
                     try {
-                        generateCuentaCorrientePdf(movimientos, cliente, fechaInicio, fechaFin, file.getAbsolutePath());
-
+                        pdfReportService.generateCuentaCorrientePdf(movimientos, cliente, fechaInicio, fechaFin, file.getAbsolutePath());
                         mostrarAlerta(Alert.AlertType.INFORMATION, "PDF Generado", "El reporte de cuenta corriente se ha generado exitosamente en:\n" + file.getAbsolutePath());
                         pdfStage.close();
-
-                        if (Desktop.isDesktopSupported()) {
-                            new Thread(() -> {
-                                try {
-                                    Desktop.getDesktop().open(file);
-                                } catch (IOException e) {
-                                    System.err.println("Error al intentar abrir el PDF: " + e.getMessage());
-                                    Platform.runLater(() -> mostrarAlerta(Alert.AlertType.ERROR, "Error al Abrir PDF", "No se pudo abrir el PDF automáticamente. Por favor, ábrelo manualmente desde:\n" + file.getAbsolutePath()));
-                                }
-                            }).start();
-                        } else {
-                            System.out.println("Desktop API no soportada en este sistema. No se puede abrir el PDF automáticamente.");
-                        }
-
+                        openPdfAutomatically(file);
                     } catch (IOException e) {
                         System.err.println("Error al generar el PDF: " + e.getMessage());
                         e.printStackTrace();
                         mostrarAlerta(Alert.AlertType.ERROR, "Error al Generar PDF", "Hubo un error al generar el PDF: " + e.getMessage());
+                    } catch (Exception e) { // Captura cualquier otra excepción inesperada
+                        System.err.println("Un error inesperado ocurrió: " + e.getMessage());
+                        e.printStackTrace();
+                        mostrarAlerta(Alert.AlertType.ERROR, "Error Inesperado", "Ocurrió un error inesperado: " + e.getMessage());
                     }
                 } else {
                     mostrarAlerta(Alert.AlertType.INFORMATION, "Generación Cancelada", "La generación del PDF ha sido cancelada.");
@@ -274,12 +267,36 @@ public class PDFController {
                 return;
             }
 
-            try { // Añadido try-catch para manejar IOException
-                handleGenerarPdfProveedoresFacturas(pdfStage, fechaInicio, fechaFin);
-            } catch (IOException e) {
-                System.err.println("Error al manejar la generación del PDF de proveedores: " + e.getMessage());
-                e.printStackTrace();
-                mostrarAlerta(Alert.AlertType.ERROR, "Error de Generación", "Ocurrió un error al intentar generar el PDF de facturas de proveedores: " + e.getMessage());
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Guardar Reporte de Facturas por Proveedor");
+            FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("Archivos PDF (*.pdf)", "*.pdf");
+            fileChooser.getExtensionFilters().add(extFilter);
+            fileChooser.setInitialFileName("reporte_facturas_proveedores_" +
+                    fechaInicio.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "_" +
+                    fechaFin.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf");
+
+            File file = fileChooser.showSaveDialog(pdfStage);
+
+            if (file != null) {
+                try {
+                    pdfReportService.generateProveedoresFacturasPdf(file.getAbsolutePath(), fechaInicio, fechaFin);
+                    mostrarAlerta(Alert.AlertType.INFORMATION, "PDF Generado", "El reporte de facturas por proveedor se ha generado exitosamente en:\n" + file.getAbsolutePath());
+                    openPdfAutomatically(file);
+                } catch (IOException e) {
+                    System.err.println("Error al generar el PDF de facturas por proveedor: " + e.getMessage());
+                    e.printStackTrace();
+                    mostrarAlerta(Alert.AlertType.ERROR, "Error al Generar PDF", "Ocurrió un error al intentar generar el PDF de facturas de proveedores: " + e.getMessage());
+                } catch (SQLException e) { // ¡NUEVO CATCH! Maneja errores de DB que vienen del servicio
+                    System.err.println("Error de base de datos al generar PDF de proveedores: " + e.getMessage());
+                    e.printStackTrace();
+                    mostrarAlerta(Alert.AlertType.ERROR, "Error de Base de Datos", "Ocurrió un error de base de datos al generar el PDF de proveedores: " + e.getMessage());
+                } catch (Exception e) { // Captura cualquier otra excepción inesperada
+                    System.err.println("Un error inesperado ocurrió: " + e.getMessage());
+                    e.printStackTrace();
+                    mostrarAlerta(Alert.AlertType.ERROR, "Error Inesperado", "Ocurrió un error inesperado al generar el PDF de proveedores: " + e.getMessage());
+                }
+            } else {
+                mostrarAlerta(Alert.AlertType.INFORMATION, "Generación Cancelada", "La generación del PDF de facturas por proveedor ha sido cancelada.");
             }
         });
     }
@@ -292,285 +309,18 @@ public class PDFController {
         alert.showAndWait();
     }
 
-    private void generateCuentaCorrientePdf(List<CuentaCorriente> movimientos, Cliente cliente, LocalDate fechaInicio, LocalDate fechaFin, String outputPath) throws IOException {
-        PdfFont FONT_NORMAL;
-        PdfFont FONT_BOLD;
-
-        try {
-            FONT_NORMAL = PdfFontFactory.createFont(StandardFonts.HELVETICA);
-            FONT_BOLD = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-        } catch (IOException e) {
-            System.err.println("Error al cargar las fuentes PDF en el método generateCuentaCorrientePdf: " + e.getMessage());
-            FONT_NORMAL = PdfFontFactory.createFont(StandardFonts.HELVETICA); // Fallback
-            FONT_BOLD = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD); // Fallback
-        }
-
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        PdfWriter writer = new PdfWriter(outputPath);
-        PdfDocument pdf = new PdfDocument(writer);
-        Document document = new Document(pdf, PageSize.A4.rotate());
-
-        document.setMargins(20, 20, 20, 20);
-
-        // -- Título y cabecera del documento --
-        document.add(new Paragraph("Reporte de Cuenta Corriente")
-                .setFont(FONT_BOLD)
-                .setFontSize(18)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(10));
-
-        document.add(new Paragraph("Cliente: " + cliente.getNombre() + " (Razón Social: " + cliente.getRazonSocial() + ")")
-                .setFont(FONT_BOLD)
-                .setFontSize(12)
-                .setMarginBottom(5));
-
-        document.add(new Paragraph(
-                "CUIT: " + (cliente.getCUIT() != null ? cliente.getCUIT() : "N/A") +
-                        " | Domicilio: " + (cliente.getDomicilio() != null ? cliente.getDomicilio() : "N/A") +
-                        " | Localidad: " + (cliente.getLocalidad() != null ? cliente.getLocalidad() : "N/A"))
-                .setFont(FONT_NORMAL)
-                .setFontSize(9)
-                .setMarginBottom(5));
-
-        document.add(new Paragraph(
-                "Período: " + fechaInicio.format(dateFormatter) + " - " + fechaFin.format(dateFormatter))
-                .setFont(FONT_NORMAL)
-                .setFontSize(9)
-                .setMarginBottom(15));
-
-        // -- Tabla de movimientos --
-        Table table = new Table(UnitValue.createPercentArray(new float[]{1.2f, 0.8f, 1.5f, 1f, 1f, 1.2f, 2.5f}));
-        table.setWidth(UnitValue.createPercentValue(100));
-        table.setMarginBottom(10);
-
-        // Cabecera de la tabla
-        String[] headers = {"Fecha", "Tipo", "Comprobante", "Venta", "Monto", "Saldo", "Observación"};
-        for (String header : headers) {
-            table.addHeaderCell(new Cell().add(new Paragraph(header)
-                            .setFont(FONT_BOLD)
-                            .setFontSize(10)
-                            .setFontColor(com.itextpdf.kernel.colors.ColorConstants.WHITE))
-                    .setBackgroundColor(new DeviceRgb(52, 152, 219))
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setPadding(5));
-        }
-
-        // Filas de datos
-        for (CuentaCorriente cc : movimientos) {
-            table.addCell(new Cell().add(new Paragraph(cc.getFecha().format(dateFormatter))
-                    .setFont(FONT_NORMAL)
-                    .setFontSize(9)));
-            table.addCell(new Cell().add(new Paragraph(cc.getTipo())
-                    .setFont(FONT_NORMAL)
-                    .setFontSize(9)));
-            table.addCell(new Cell().add(new Paragraph(cc.getComprobante())
-                    .setFont(FONT_NORMAL)
-                    .setFontSize(9)));
-            table.addCell(new Cell().add(new Paragraph(String.format("$%.2f", cc.getVenta()))
-                    .setFont(FONT_NORMAL)
-                    .setFontSize(9)));
-            table.addCell(new Cell().add(new Paragraph(String.format("$%.2f", cc.getMonto()))
-                    .setFont(FONT_NORMAL)
-                    .setFontSize(9)));
-            table.addCell(new Cell().add(new Paragraph(String.format("$%.2f", cc.getSaldo()))
-                    .setFont(FONT_BOLD)
-                    .setFontSize(9)));
-            table.addCell(new Cell().add(new Paragraph(cc.getObservacion())
-                    .setFont(FONT_NORMAL)
-                    .setFontSize(9)));
-        }
-
-        document.add(table);
-
-        // Pie de página
-        document.add(new Paragraph(
-                "Reporte generado el: " + LocalDate.now().format(dateFormatter) + " a las " +
-                        java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")))
-                .setFont(FONT_NORMAL)
-                .setFontSize(8)
-                .setTextAlignment(TextAlignment.RIGHT)
-                .setMarginTop(10));
-
-        document.close();
-    }
-
-    // Modificación: se agregó 'throws IOException' a la firma del método
-    private void handleGenerarPdfProveedoresFacturas(Stage parentStage, LocalDate fechaInicio, LocalDate fechaFin) throws IOException {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Guardar Reporte de Facturas por Proveedor");
-        FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("Archivos PDF (*.pdf)", "*.pdf");
-        fileChooser.getExtensionFilters().add(extFilter);
-        fileChooser.setInitialFileName("reporte_facturas_proveedores_" +
-                fechaInicio.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "_" +
-                fechaFin.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf"); // Nombre con fechas
-
-        File file = fileChooser.showSaveDialog(parentStage);
-
-        if (file != null) {
-            try {
-                // Modificación: se pasan las fechas a generateProveedoresFacturasPdf
-                generateProveedoresFacturasPdf(file.getAbsolutePath(), fechaInicio, fechaFin);
-
-                mostrarAlerta(Alert.AlertType.INFORMATION, "PDF Generado", "El reporte de facturas por proveedor se ha generado exitosamente en:\n" + file.getAbsolutePath());
-
-                if (Desktop.isDesktopSupported()) {
-                    new Thread(() -> {
-                        try {
-                            Desktop.getDesktop().open(file);
-                        } catch (IOException e) {
-                            System.err.println("Error al intentar abrir el PDF: " + e.getMessage());
-                            Platform.runLater(() -> mostrarAlerta(Alert.AlertType.ERROR, "Error al Abrir PDF", "No se pudo abrir el PDF automáticamente. Por favor, ábrelo manualmente desde:\n" + file.getAbsolutePath()));
-                        }
-                    }).start();
-                } else {
-                    System.out.println("Desktop API no soportada en este sistema. No se puede abrir el PDF automáticamente.");
+    private void openPdfAutomatically(File file) {
+        if (Desktop.isDesktopSupported()) {
+            new Thread(() -> {
+                try {
+                    Desktop.getDesktop().open(file);
+                } catch (IOException e) {
+                    System.err.println("Error al intentar abrir el PDF: " + e.getMessage());
+                    Platform.runLater(() -> mostrarAlerta(Alert.AlertType.ERROR, "Error al Abrir PDF", "No se pudo abrir el PDF automáticamente. Por favor, ábrelo manualmente desde:\n" + file.getAbsolutePath()));
                 }
-
-            } catch (IOException e) {
-                System.err.println("Error al generar el PDF de facturas por proveedor: " + e.getMessage());
-                e.printStackTrace();
-                // Relanzar la excepción para que sea manejada por el llamador
-                throw e;
-            }
+            }).start();
         } else {
-            mostrarAlerta(Alert.AlertType.INFORMATION, "Generación Cancelada", "La generación del PDF de facturas por proveedor ha sido cancelada.");
+            System.out.println("Desktop API no soportada en este sistema. No se puede abrir el PDF automáticamente.");
         }
-    }
-
-    // Modificación: se agregaron los parámetros fechaInicio y fechaFin
-    private void generateProveedoresFacturasPdf(String outputPath, LocalDate fechaInicio, LocalDate fechaFin) throws IOException {
-        PdfFont FONT_NORMAL;
-        PdfFont FONT_BOLD;
-        PdfFont FONT_ITALIC;
-
-        try {
-            FONT_NORMAL = PdfFontFactory.createFont(StandardFonts.HELVETICA);
-            FONT_BOLD = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-            FONT_ITALIC = PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE);
-        } catch (IOException e) {
-            System.err.println("Error al cargar las fuentes PDF en el método generateProveedoresFacturasPdf: " + e.getMessage());
-            FONT_NORMAL = PdfFontFactory.createFont(StandardFonts.HELVETICA);
-            FONT_BOLD = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-            FONT_ITALIC = PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE);
-        }
-
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        PdfWriter writer = new PdfWriter(outputPath);
-        PdfDocument pdf = new PdfDocument(writer);
-        Document document = new Document(pdf, PageSize.A4);
-
-        document.setMargins(30, 30, 30, 30);
-
-        document.add(new Paragraph("Reporte de Facturas por Proveedor")
-                .setFont(FONT_BOLD)
-                .setFontSize(20)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(20));
-
-        // Añadir el rango de fechas al título del reporte
-        document.add(new Paragraph(
-                "Período: " + fechaInicio.format(dateFormatter) + " - " + fechaFin.format(dateFormatter))
-                .setFont(FONT_NORMAL)
-                .setFontSize(10)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(15));
-
-
-        List<Proveedor> proveedores = null;
-
-        try {
-            proveedores = proveedorDAO.obtenerTodosLosProveedores();
-        } catch (SQLException e) {
-            System.err.println("Error de base de datos al obtener proveedores: " + e.getMessage());
-            mostrarAlerta(Alert.AlertType.ERROR, "Error de Base de Datos", "No se pudieron cargar los proveedores debido a un error en la base de datos.");
-            document.add(new Paragraph("Error: No se pudieron cargar los datos de los proveedores."));
-            document.close();
-            return;
-        }
-        if (proveedores.isEmpty()) {
-            document.add(new Paragraph("No se encontraron proveedores para generar el reporte de facturas.")
-                    .setFont(FONT_NORMAL)
-                    .setFontSize(12)
-                    .setTextAlignment(TextAlignment.CENTER));
-        } else {
-            for (Proveedor proveedor : proveedores) {
-                document.add(new Paragraph("PROVEEDOR: " + proveedor.getNombre() + " (CUIT: " + (proveedor.getCUIT() != null ? proveedor.getCUIT() : "N/A") + ")")
-                        .setFont(FONT_BOLD)
-                        .setFontSize(14)
-                        .setMarginTop(20)
-                        .setMarginBottom(10)
-                        .setTextAlignment(TextAlignment.LEFT));
-
-                // Modificación: Llamar a un nuevo método en CuentaCorrienteDAO que incluya el filtro por fechas
-                List<CuentaCorriente> facturas = cuentaCorrienteDAO.obtenerMovimientosPorProveedorYTipoYFechas(proveedor.getId(), "Factura", fechaInicio, fechaFin);
-
-                if (facturas.isEmpty()) {
-                    document.add(new Paragraph("  - Sin facturas registradas para este proveedor en el período seleccionado.")
-                            .setFont(FONT_ITALIC)
-                            .setFontSize(10)
-                            .setMarginLeft(20)
-                            .setMarginBottom(10));
-                } else {
-                    Table facturasTable = new Table(UnitValue.createPercentArray(new float[]{1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 2f}));
-                    facturasTable.setWidth(UnitValue.createPercentValue(100));
-                    facturasTable.setMarginLeft(20);
-                    facturasTable.setMarginBottom(15);
-
-                    String[] facturaHeaders = {"Fecha", "N°Factura", "Tipo", "Neto", "IVA", "Otros", "Monto", "Saldo", "Observación"};
-                    for (String header : facturaHeaders) {
-                        facturasTable.addHeaderCell(new Cell().add(new Paragraph(header)
-                                        .setFont(FONT_BOLD)
-                                        .setFontSize(9)
-                                        .setFontColor(com.itextpdf.kernel.colors.ColorConstants.WHITE))
-                                .setBackgroundColor(new DeviceRgb(70, 130, 180))
-                                .setTextAlignment(TextAlignment.CENTER)
-                                .setPadding(4));
-                    }
-
-                    for (CuentaCorriente factura : facturas) {
-                        facturasTable.addCell(new Cell().add(new Paragraph(factura.getFecha().format(dateFormatter))
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(factura.getComprobante())
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(factura.getTipo())
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(String.format("$%.2f", factura.getNeto()))
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(String.format("$%.2f", factura.getIva()))
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(String.format("$%.2f", factura.getOtros()))
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(String.format("$%.2f", factura.getMonto()))
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(String.format("$%.2f", factura.getSaldo()))
-                                .setFont(FONT_BOLD)
-                                .setFontSize(8)));
-                        facturasTable.addCell(new Cell().add(new Paragraph(factura.getObservacion())
-                                .setFont(FONT_NORMAL)
-                                .setFontSize(8)));
-                    }
-                    document.add(facturasTable);
-                }
-            }
-        }
-
-        document.add(new Paragraph(
-                "Reporte de Facturas por Proveedor generado el: " + LocalDate.now().format(dateFormatter) + " a las " +
-                        java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")))
-                .setFont(FONT_NORMAL)
-                .setFontSize(8)
-                .setTextAlignment(TextAlignment.RIGHT)
-                .setMarginTop(20));
-
-        document.close();
     }
 }

@@ -10,11 +10,11 @@ import java.util.List;
 public class ComprobanteDAO {
     private Connection connection;
 
-    public ComprobanteDAO() {
+    public ComprobanteDAO() throws SQLException {
         this.connection = ConexionMySQL.conectar();
     }
 
-    public void crearComprobante(Comprobante comprobante, int cuentaCorrienteId) {
+    public void crearComprobante(Comprobante comprobante, int cuentaCorrienteId) throws SQLException {
         String query = "INSERT INTO comprobantes(cuenta_corriente_id, cantidad, nombre, precio) VALUES(?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
@@ -33,12 +33,10 @@ public class ComprobanteDAO {
                     System.out.println("Comprobante creado exitosamente con ID: " + comprobanteId);
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Error al crear comprobante: " + e.getMessage());
         }
     }
 
-    public List<Comprobante> obtenerComprobantesPorCuentaCorrienteId(int cuentaCorrienteId) {
+    public List<Comprobante> obtenerComprobantesPorCuentaCorrienteId(int cuentaCorrienteId) throws SQLException {
         List<Comprobante> comprobantes = new ArrayList<>();
         String query = "SELECT * FROM comprobantes WHERE cuenta_corriente_id = ?";
 
@@ -58,21 +56,16 @@ public class ComprobanteDAO {
         } catch (SQLException e) {
             System.err.println("Error al obtener comprobantes: " + e.getMessage());
         }
-
         return comprobantes;
     }
 
-    public boolean eliminarComprobantesPorCuentaCorrienteId(int cuentaCorrienteId) {
+    public boolean eliminarComprobantesPorCuentaCorrienteId(int cuentaCorrienteId) throws SQLException {
         String query = "DELETE FROM comprobantes WHERE cuenta_corriente_id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setInt(1, cuentaCorrienteId);
             int filasAfectadas = pstmt.executeUpdate();
             System.out.println("Se eliminaron " + filasAfectadas + " comprobantes para la cuenta corriente ID: " + cuentaCorrienteId);
             return filasAfectadas > 0;
-        } catch (SQLException e) {
-            System.err.println("Error al eliminar comprobantes por cuenta corriente ID: " + e.getMessage());
-            e.printStackTrace();
-            return false;
         }
     }
 }

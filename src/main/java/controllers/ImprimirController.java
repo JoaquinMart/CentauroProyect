@@ -11,6 +11,7 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.Priority;
 import javafx.util.Callback;
 import model.*;
+import services.ImprimirPdfService; // Importar el nuevo servicio
 
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.FXCollections;
@@ -33,24 +34,20 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.properties.UnitValue;
-import com.itextpdf.layout.element.Cell;
-import com.itextpdf.layout.properties.TextAlignment;
-import com.itextpdf.kernel.font.PdfFont; // Importar PdfFont
-import com.itextpdf.kernel.font.PdfFontFactory; // Importar PdfFontFactory
-import com.itextpdf.io.font.constants.StandardFonts;
-
 public class ImprimirController {
+
+    private static ImprimirPdfService imprimirPdfService;
+    static {
+        try {
+            imprimirPdfService = new ImprimirPdfService();
+        } catch (IOException e) {
+            System.err.println("Error al inicializar ImprimirPdfService: " + e.getMessage());
+        }
+    }
 
     public static void imprimirSeleccion(ComboBox<String> imprimirCombo) {
         String seleccion = imprimirCombo.getValue();
         if (seleccion == null) return;
-
         if (seleccion.equalsIgnoreCase("Clientes")) {
             mostrarClientes();
         } else if (seleccion.equalsIgnoreCase("Proveedores")) {
@@ -66,20 +63,16 @@ public class ImprimirController {
         ProductoDAO productoDAO = new ProductoDAO();
         try {
             List<Producto> productos = productoDAO.obtenerProductos();
-
             TableView<Producto> tablaProductos = new TableView<>(FXCollections.observableArrayList(productos));
             tablaProductos.getStyleClass().add("main-table");
-
             tablaProductos.getColumns().addAll(
                     crearColumnaNumerica("ID", "id"),
                     crearColumnaTexto("Codigo", "codigo"),
                     crearColumnaTexto("Nombre", "nombre"),
                     crearColumnaNumerica("Precio Unitario", "precio")
             );
-
             tablaProductos.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
             mostrarVentana("Listado de Productos:", "Productos", tablaProductos);
-
         } catch (SQLException ex) {
             ex.printStackTrace();
             mostrarError("Error al obtener los productos.");
@@ -89,14 +82,10 @@ public class ImprimirController {
     private static void mostrarClientesDeudores() {
         ClienteDAO clienteDAO = new ClienteDAO();
         try {
-            // 1. Obtener TODOS los clientes con sus cuentas corrientes cargadas
             List<Cliente> todosLosClientesConCuentas = clienteDAO.obtenerClientesConCuentas();
-
-            // 2. Filtrar esta lista para obtener solo los clientes con saldo diferente de 0
             List<Cliente> clientesDeudores = todosLosClientesConCuentas.stream()
                     .filter(cliente -> {
                         List<CuentaCorriente> cuentas = cliente.getCuentaCorrientes();
-                        // Calcula el saldo del cliente
                         double saldo = 0;
                         if (cuentas != null && !cuentas.isEmpty()) {
                             CuentaCorriente ultima = cuentas.stream()
@@ -109,8 +98,6 @@ public class ImprimirController {
                         return saldo != 0;
                     })
                     .collect(Collectors.toList());
-
-            // 3. Crear la TableView con la lista filtrada de clientes deudores
             TableView<Cliente> tablaClientes = new TableView<>(FXCollections.observableArrayList(clientesDeudores));
             tablaClientes.getStyleClass().add("main-table");
 
@@ -123,7 +110,6 @@ public class ImprimirController {
                     crearColumnaTexto("Localidad", "localidad"),
                     crearColumnaTexto("Condición", "condicion"),
                     crearColumnaTexto("Proveedor", "proveedor"),
-                    // Usamos crearColumnaSaldoCliente que calcula el saldo para mostrarlo
                     crearColumnaSaldoCliente()
             );
 
@@ -140,12 +126,10 @@ public class ImprimirController {
             Stage ventana = new Stage();
             ventana.getIcons().add(new Image(ImprimirController.class.getResourceAsStream("/icono.png")));
             ventana.setTitle("Clientes Deudores");
-            Scene scene = new Scene(layout, 1200, 800); // Crear la Scene
-            scene.getStylesheets().add(ImprimirController.class.getResource("/style.css").toExternalForm()); // O la clase correcta si este método no está en ImprimirController
-            ventana.setScene(scene); // Establecer la Scene
+            Scene scene = new Scene(layout, 1200, 800);
+            scene.getStylesheets().add(ImprimirController.class.getResource("/style.css").toExternalForm());
+            ventana.setScene(scene);
             ventana.show();
-
-
         } catch (SQLException ex) {
             ex.printStackTrace();
             mostrarError("Error al obtener los clientes deudores.");
@@ -156,10 +140,8 @@ public class ImprimirController {
         ClienteDAO clienteDAO = new ClienteDAO();
         try {
             List<Cliente> clientes = clienteDAO.obtenerClientesConCuentas();
-
             TableView<Cliente> tablaClientes = new TableView<>(FXCollections.observableArrayList(clientes));
             tablaClientes.getStyleClass().add("main-table");
-
             tablaClientes.getColumns().addAll(
                     crearColumnaNumerica("ID", "id"),
                     crearColumnaTexto("Nombre", "nombre"),
@@ -171,10 +153,8 @@ public class ImprimirController {
                     crearColumnaTexto("Proveedor", "proveedor"),
                     crearColumnaSaldoCliente()
             );
-
             tablaClientes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
             mostrarVentana("Listado de Clientes:", "Clientes", tablaClientes);
-
         } catch (SQLException ex) {
             ex.printStackTrace();
             mostrarError("Error al obtener los clientes.");
@@ -185,10 +165,8 @@ public class ImprimirController {
         ProveedorDAO proveedorDAO = new ProveedorDAO();
         try {
             List<Proveedor> proveedores = proveedorDAO.obtenerProveedoresConCuentas();
-
             TableView<Proveedor> tablaProveedores = new TableView<>(FXCollections.observableArrayList(proveedores));
             tablaProveedores.getStyleClass().add("main-table");
-
             tablaProveedores.getColumns().addAll(
                     crearColumnaNumerica("ID", "id"),
                     crearColumnaTexto("Nombre", "nombre"),
@@ -200,10 +178,8 @@ public class ImprimirController {
                     crearColumnaTexto("CodigoPostal", "codigoPostal"),
                     crearColumnaSaldoProveedor()
             );
-
             tablaProveedores.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
             mostrarVentana("Listado de Proveedores:", "Proveedores", tablaProveedores);
-
         } catch (SQLException ex) {
             ex.printStackTrace();
             mostrarError("Error al obtener los proveedores.");
@@ -292,88 +268,13 @@ public class ImprimirController {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Guardar PDF de Clientes Deudores");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Archivos PDF", "*.pdf"));
-
         String defaultFileName = "ClientesDeudores_" + LocalDate.now() + ".pdf";
         fileChooser.setInitialFileName(defaultFileName);
-
         File file = fileChooser.showSaveDialog(ownerStage);
         if (file != null) {
             try {
-                PdfWriter writer = new PdfWriter(file.getAbsolutePath());
-                PdfDocument pdf = new PdfDocument(writer);
-                Document document = new Document(pdf, PageSize.A4.rotate());
-                document.setMargins(20, 20, 20, 20);
-
-                PdfFont font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
-                PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-
-                document.add(new Paragraph("Listado de Clientes Deudores")
-                        .setFont(boldFont)
-                        .setFontSize(18)
-                        .setTextAlignment(TextAlignment.CENTER)
-                        .setMarginBottom(15));
-
-                float[] columnWidths = {0.5f, 2f, 2f, 1.5f, 1.5f, 2f, 1.5f, 1.5f, 1f};
-                Table table = new Table(UnitValue.createPercentArray(columnWidths)).useAllAvailableWidth();
-                table.setMarginBottom(10);
-
-                DeviceRgb headerBgColor = new DeviceRgb(52, 152, 219);
-                table.addHeaderCell(new Cell().add(new Paragraph("ID").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("Nombre").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("Razón Social").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("CUIT").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("Teléfono").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("Localidad").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("Condición").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("Proveedor").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                table.addHeaderCell(new Cell().add(new Paragraph("Saldo").setFont(boldFont).setFontSize(10).setFontColor(ColorConstants.WHITE))
-                        .setBackgroundColor(headerBgColor).setTextAlignment(TextAlignment.RIGHT).setPadding(5));
-
-                for (Cliente cliente : clientesDeudores) {
-                    table.addCell(new Cell().add(new Paragraph(String.valueOf(cliente.getId())).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                    table.addCell(new Cell().add(new Paragraph(cliente.getNombre()).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.LEFT).setPadding(5));
-                    table.addCell(new Cell().add(new Paragraph(cliente.getRazonSocial()).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.LEFT).setPadding(5));
-                    table.addCell(new Cell().add(new Paragraph(cliente.getCUIT()).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                    table.addCell(new Cell().add(new Paragraph(cliente.getTelefono()).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setPadding(5));
-                    table.addCell(new Cell().add(new Paragraph(cliente.getLocalidad()).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.LEFT).setPadding(5));
-                    table.addCell(new Cell().add(new Paragraph(cliente.getCondicion()).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.LEFT).setPadding(5));
-                    table.addCell(new Cell().add(new Paragraph(cliente.getProveedor()).setFont(font).setFontSize(9)).setTextAlignment(TextAlignment.LEFT).setPadding(5));
-
-                    double saldo = 0;
-                    List<CuentaCorriente> cuentas = cliente.getCuentaCorrientes();
-                    if (cuentas != null && !cuentas.isEmpty()) {
-                        CuentaCorriente ultima = cuentas.stream()
-                                .max(Comparator.comparing(CuentaCorriente::getFecha))
-                                .orElse(null);
-                        if (ultima != null) {
-                            saldo = ultima.getSaldo();
-                        }
-                    }
-                    table.addCell(new Cell().add(new Paragraph(String.format("%.2f", saldo)).setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.RIGHT).setPadding(5));
-                }
-
-                document.add(table);
-
-                document.add(new Paragraph(
-                        "Reporte generado el: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " a las " +
-                                java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")))
-                        .setFont(font)
-                        .setFontSize(8)
-                        .setTextAlignment(TextAlignment.RIGHT)
-                        .setMarginTop(10));
-
-                document.close();
-
+                imprimirPdfService.generateClientesDeudoresPdf(clientesDeudores, file.getAbsolutePath());
                 mostrarInformacion("PDF Generado Exitosamente", "El listado de deudores se ha guardado en:\n" + file.getAbsolutePath());
-
                 if (Desktop.isDesktopSupported()) {
                     try {
                         Desktop.getDesktop().open(file);
@@ -382,7 +283,6 @@ public class ImprimirController {
                         mostrarError("Error al intentar abrir el archivo PDF. Revise la ruta: " + file.getAbsolutePath());
                     }
                 }
-
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
                 mostrarError("Error: No se pudo crear el archivo PDF. Asegúrese de que no esté abierto y tenga permisos de escritura.\n" + e.getMessage());
@@ -406,5 +306,4 @@ public class ImprimirController {
             }
         };
     }
-
 }

@@ -15,7 +15,7 @@ import java.sql.Statement;
 public class ClienteDAO {
 
     // Método para crear un nuevo cliente
-    public void crearCliente(Cliente cliente) {
+    public void crearCliente(Cliente cliente) throws SQLException { // Modificado
         String sql = "INSERT INTO Clientes(nombre, razonSocial, domicilio, localidad, codigoPostal, telefono, CUIT, condicion, fechaAlta, proveedor) " +
                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -50,14 +50,11 @@ public class ClienteDAO {
             }
 
             System.out.println("model.Cliente creado exitosamente. ID: " + cliente.getId());
-
-        } catch (SQLException e) {
-            System.out.println("Error al crear cliente: " + e.getMessage());
         }
     }
 
     // Método para obtener cliente por Nombre
-    public Cliente obtenerClientePorNombre(String nombre) {
+    public Cliente obtenerClientePorNombre(String nombre) throws SQLException {
         try (Connection conn = ConexionMySQL.conectar();
              PreparedStatement stmt = conn.prepareStatement("SELECT * FROM clientes WHERE nombre = ?")) {
             stmt.setString(1, nombre);
@@ -75,17 +72,15 @@ public class ClienteDAO {
                         rs.getDate("fechaAlta").toLocalDate(),
                         rs.getString("proveedor")
                 );
-                cliente.setId(rs.getInt("id"));  // Asignás el ID acá
+                cliente.setId(rs.getInt("id"));
                 return cliente;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return null;
     }
 
     // Método para eliminar cliente
-    public void eliminarCliente(String nombre) {
+    public void eliminarCliente(String nombre) throws SQLException {
         String sql = "DELETE FROM Clientes WHERE nombre = ?";
 
         try (Connection conn = ConexionMySQL.conectar();
@@ -99,14 +94,11 @@ public class ClienteDAO {
             } else {
                 System.out.println("model.Cliente no encontrado.");
             }
-
-        } catch (SQLException e) {
-            System.out.println("Error al eliminar cliente: " + e.getMessage());
         }
     }
 
     // Método para actualizar cliente
-    public void actualizarCliente(Cliente cliente) {
+    public void actualizarCliente(Cliente cliente) throws SQLException {
         String sql = "UPDATE Clientes SET nombre = ?, razonSocial = ?, domicilio = ?, localidad = ?, codigoPostal = ?, " +
                 "telefono = ?, CUIT = ?, condicion = ?, fechaAlta = ?, proveedor = ? WHERE id = ?";
 
@@ -124,13 +116,11 @@ public class ClienteDAO {
             pstmt.setInt(11, cliente.getId());
             pstmt.executeUpdate();
             System.out.println("model.Cliente actualizado exitosamente.");
-        } catch (SQLException e) {
-            System.out.println("Error al actualizar cliente: " + e.getMessage());
         }
     }
 
     // Método para obtener los movimientos de cuenta corriente de un cliente por su ID
-    public List<CuentaCorriente> obtenerMovimientosPorClienteId(int clienteId) {
+    public List<CuentaCorriente> obtenerMovimientosPorClienteId(int clienteId) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
         String sql = "SELECT * FROM cuenta_corriente WHERE cliente_id = ?";
 
@@ -157,10 +147,7 @@ public class ClienteDAO {
                 movimientos.add(movimiento);
             }
 
-        } catch (SQLException e) {
-            System.out.println("Error al obtener movimientos de cuenta corriente: " + e.getMessage());
         }
-
         return movimientos;
     }
 
@@ -189,11 +176,7 @@ public class ClienteDAO {
                 cliente.setId(rs.getInt("id"));
                 clientes.add(cliente);
             }
-
-        } catch (SQLException e) {
-            System.out.println("Error al obtener todos los clientes: " + e.getMessage());
         }
-
         return clientes;
     }
 

@@ -4,12 +4,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import io.github.cdimascio.dotenv.Dotenv;
 
 public class ConexionMySQL {
 
-    private static final String URL = "jdbc:mysql://localhost:3306/centauro?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
-    private static final String USUARIO = "joaquin";
-    private static final String CLAVE = "Colore2015";
+    private static final Dotenv dotenv = Dotenv.load();
+
+    private static final String URL = dotenv.get("DB_URL");
+    private static final String USUARIO = dotenv.get("DB_USER");
+    private static final String CLAVE = dotenv.get("DB_PASSWORD");
 
     public static Connection conectar() {
         Connection conn = null;

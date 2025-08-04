@@ -15,7 +15,7 @@ import java.sql.Statement;
 public class ProveedorDAO {
 
     // Método para crear un nuevo proveedor en la base de datos
-    public void crearProveedor(Proveedor proveedor) {
+    public void crearProveedor(Proveedor proveedor) throws SQLException {
         String sql = "INSERT INTO Proveedores (nombre, razonSocial, domicilio, localidad, codigoPostal, telefono, CUIT, categoria, contacto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = ConexionMySQL.conectar();
@@ -47,14 +47,11 @@ public class ProveedorDAO {
 
             System.out.println("model.Proveedor creado exitosamente. ID: " + proveedor.getId());
 
-        } catch (SQLException e) {
-            System.out.println("Error al crear proveedor: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
     // Método para obtener un proveedor nombre
-    public Proveedor obtenerProveedorPorNombre(String nombre) {
+    public Proveedor obtenerProveedorPorNombre(String nombre) throws SQLException {
         try (Connection conn = ConexionMySQL.conectar();
              PreparedStatement stmt = conn.prepareStatement("SELECT * FROM proveedores WHERE nombre = ?")) {
             stmt.setString(1, nombre);
@@ -74,14 +71,12 @@ public class ProveedorDAO {
                 proveedor.setId(rs.getInt("id")); // <-- esta línea es importante
                 return proveedor;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return null;
     }
 
     // Método para eliminar un proveedor por su nombre
-    public void eliminarProveedor(String nombre) {
+    public void eliminarProveedor(String nombre) throws SQLException {
         String sql = "DELETE FROM Proveedores WHERE nombre = ?";
 
         try (Connection conn = ConexionMySQL.conectar();
@@ -95,13 +90,11 @@ public class ProveedorDAO {
             } else {
                 System.out.println("model.Proveedor no encontrado.");
             }
-        } catch (SQLException e) {
-            System.out.println("Error al eliminar proveedor: " + e.getMessage());
         }
     }
 
     // Método para actualizar la información de un proveedor
-    public void actualizarProveedor(Proveedor proveedor) {
+    public void actualizarProveedor(Proveedor proveedor) throws SQLException {
         String sql = "UPDATE Proveedores SET nombre = ?, razonSocial = ?, domicilio = ?, localidad = ?, codigoPostal = ?, telefono = ?, CUIT = ?, categoria = ?, contacto = ? WHERE id = ?";
 
         try (Connection conn = ConexionMySQL.conectar();
@@ -119,13 +112,11 @@ public class ProveedorDAO {
             pstmt.setInt(10, proveedor.getId());
 
             pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error al actualizar proveedor: " + e.getMessage());
         }
     }
 
     // Método para obtener los movimientos de cuenta corriente de un cliente por su ID
-    public List<CuentaCorriente> obtenerMovimientosPorProveedorId(int proveedorId) {
+    public List<CuentaCorriente> obtenerMovimientosPorProveedorId(int proveedorId) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
         String sql = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ?";
 
@@ -151,11 +142,7 @@ public class ProveedorDAO {
                 );
                 movimientos.add(movimiento);
             }
-
-        } catch (SQLException e) {
-            System.out.println("Error al obtener movimientos de cuenta corriente: " + e.getMessage());
         }
-
         return movimientos;
     }
 
@@ -181,8 +168,6 @@ public class ProveedorDAO {
                 proveedor.setId(rs.getInt("id"));
                 proveedores.add(proveedor);
             }
-        } catch (SQLException e) {
-            System.out.println("Error al obtener todos los proveedores: " + e.getMessage());
         }
         return proveedores;
     }
@@ -191,7 +176,6 @@ public class ProveedorDAO {
     public List<Proveedor> obtenerProveedoresConCuentas() throws SQLException {
         List<Proveedor> proveedores = obtenerTodosLosProveedores(); // Ya lo tenés hecho
         for (Proveedor proveedor : proveedores) {
-            // Usamos tu método ya hecho también
             List<CuentaCorriente> cuentas = obtenerMovimientosPorProveedorId(proveedor.getId());
             for (CuentaCorriente cuenta : cuentas) {
                 proveedor.agregarCuentaCorriente(cuenta);

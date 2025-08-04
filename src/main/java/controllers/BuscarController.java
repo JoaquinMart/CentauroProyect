@@ -14,6 +14,7 @@ import javafx.scene.text.TextFlow;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -35,15 +36,21 @@ public class BuscarController {
             alerta.showAndWait();
             return;
         }
-
         mostrarCuentasYResumen(nombre, tablaCuentas, tablaProveedores, resumenClienteText);
-
         buscarNombreField.clear();
     }
 
     private void mostrarVentanaComprobantes(int movimientoId, String fecha, String persona) {
-        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
-        List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
+        ComprobanteDAO comprobanteDAO;
+        List<Comprobante> comprobantes;
+        try {
+            comprobanteDAO = new ComprobanteDAO();
+            comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            mostrarError("Error de base de datos al inicializar o acceder a los comprobantes: " + ex.getMessage());
+            return;
+        }
 
         Stage ventana = new Stage();
         ventana.setTitle("Dia " + fecha + ", Cliente/Proveedor " + persona);
@@ -62,7 +69,8 @@ public class BuscarController {
         totalCol.setCellValueFactory(data -> {
             int cantidad = data.getValue().getCantidad();
             double precio = data.getValue().getPrecio();
-            return new javafx.beans.property.SimpleDoubleProperty(precio / cantidad);
+            // Asegurarse de que cantidad no sea cero para evitar error
+            return new javafx.beans.property.SimpleDoubleProperty(cantidad != 0 ? precio / cantidad : 0);
         });
         totalCol.getStyleClass().add("custom-table-column");
 
@@ -87,16 +95,26 @@ public class BuscarController {
         layout.setPadding(new Insets(10));
 
         Scene escena = new Scene(layout, 900, 600);
-        escena.getStylesheets().add(getClass().getResource("/style.css").toExternalForm()); // Ruta relativa
+        escena.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         ventana.setScene(escena);
         ventana.initModality(Modality.APPLICATION_MODAL);
         ventana.showAndWait();
     }
 
     public void mostrarCuentasYResumen(String nombre, TableView<CuentaCorriente> tablaCuentas, TableView<CuentaCorriente> tablaProveedores, TextFlow resumenClienteText) {
-        ClienteDAO clienteDAO = new ClienteDAO();
-        ProveedorDAO proveedorDAO = new ProveedorDAO();
-        CuentaCorrienteDAO cuentaDAO = new CuentaCorrienteDAO();
+        ClienteDAO clienteDAO;
+        ProveedorDAO proveedorDAO;
+        CuentaCorrienteDAO cuentaDAO;
+
+        try {
+            clienteDAO = new ClienteDAO();
+            proveedorDAO = new ProveedorDAO();
+            cuentaDAO = new CuentaCorrienteDAO();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            mostrarError("Error de base de datos al inicializar los objetos de acceso a datos: " + ex.getMessage());
+            return;
+        }
 
         // Limpiar ambas tablas al inicio de la búsqueda
         tablaCuentas.getItems().clear();
@@ -108,82 +126,29 @@ public class BuscarController {
         tablaProveedores.setVisible(false);
         tablaProveedores.setManaged(false);
 
+        try {
+            Cliente cliente = clienteDAO.obtenerClientePorNombre(nombre);
+            if (cliente != null) {
+                List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorClienteId(cliente.getId());
+                tablaCuentas.getItems().setAll(cuentas);
+                tablaCuentas.setVisible(true);
+                tablaCuentas.setManaged(true);
 
-        Cliente cliente = clienteDAO.obtenerClientePorNombre(nombre);
-        if (cliente != null) {
-            List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorClienteId(cliente.getId());
-            tablaCuentas.getItems().setAll(cuentas);
-
-            // Mostrar solo la tabla de clientes
-            tablaCuentas.setVisible(true);
-            tablaCuentas.setManaged(true);
-
-            Text clienteLabel = new Text("Cliente: ");
-            clienteLabel.setStyle("-fx-font-weight: bold");
-
-            Text nombreText = new Text(cliente.getNombre() + ", ");
-
-            Text razonLabel = new Text("Razón Social: ");
-            razonLabel.setStyle("-fx-font-weight: bold");
-
-            Text razonText = new Text(cliente.getRazonSocial() + ", ");
-
-            Text cuitLabel = new Text("CUIT: ");
-            cuitLabel.setStyle("-fx-font-weight: bold");
-
-            Text cuitText = new Text(cliente.getCUIT());
-
-            resumenClienteText.getChildren().setAll(
-                    clienteLabel, nombreText,
-                    razonLabel, razonText,
-                    cuitLabel, cuitText
-            );
-
-            // Añadir el manejador de doble clic para la tabla de clientes
-            tablaCuentas.setRowFactory(tv -> {
-                TableRow<CuentaCorriente> row = new TableRow<>();
-                row.setOnMouseClicked(event -> {
-                    if (event.getClickCount() == 2 && (!row.isEmpty())) {
-                        CuentaCorriente cuentaSeleccionada = row.getItem();
-                        mostrarVentanaComprobantes(cuentaSeleccionada.getId(), cuentaSeleccionada.getFecha().format(formatter), nombre);
-                    }
-                });
-                return row;
-            });
-
-        } else {
-            Proveedor proveedor = proveedorDAO.obtenerProveedorPorNombre(nombre);
-            if (proveedor != null) {
-                List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorProveedorId(proveedor.getId());
-                tablaProveedores.getItems().setAll(cuentas);
-
-                // Mostrar solo la tabla de proveedores
-                tablaProveedores.setVisible(true);
-                tablaProveedores.setManaged(true);
-
-                Text proveedorLabel = new Text("Proveedor: ");
-                proveedorLabel.setStyle("-fx-font-weight: bold");
-
-                Text nombreText = new Text(proveedor.getNombre() + ", ");
-
-                Text razonLabel = new Text("Razón Social: ");
-                razonLabel.setStyle("-fx-font-weight: bold");
-
-                Text razonText = new Text(proveedor.getRazonSocial() + ", ");
-
-                Text cuitLabel = new Text("CUIT: ");
-                cuitLabel.setStyle("-fx-font-weight: bold");
-
-                Text cuitText = new Text(proveedor.getCUIT());
+                Text clienteLabel = new Text("Cliente: ");clienteLabel.setStyle("-fx-font-weight: bold");
+                Text nombreText = new Text(cliente.getNombre() + ", ");
+                Text razonLabel = new Text("Razón Social: ");razonLabel.setStyle("-fx-font-weight: bold");
+                Text razonText = new Text(cliente.getRazonSocial() + ", ");
+                Text cuitLabel = new Text("CUIT: ");cuitLabel.setStyle("-fx-font-weight: bold");
+                Text cuitText = new Text(cliente.getCUIT());
 
                 resumenClienteText.getChildren().setAll(
-                        proveedorLabel, nombreText,
+                        clienteLabel, nombreText,
                         razonLabel, razonText,
                         cuitLabel, cuitText
                 );
 
-                // Añadir el manejador de doble clic para la tabla de proveedores
-                tablaProveedores.setRowFactory(tv -> {
+                // Añadir el manejador de doble clic para la tabla de clientes
+                tablaCuentas.setRowFactory(tv -> {
                     TableRow<CuentaCorriente> row = new TableRow<>();
                     row.setOnMouseClicked(event -> {
                         if (event.getClickCount() == 2 && (!row.isEmpty())) {
@@ -193,13 +158,54 @@ public class BuscarController {
                     });
                     return row;
                 });
-
             } else {
-                // Si no se encuentra ni cliente ni proveedor
-                tablaCuentas.getItems().clear(); // Asegúrate de que ambas estén vacías
-                tablaProveedores.getItems().clear();
-                resumenClienteText.getChildren().setAll(new Text("No se encontró cliente/proveedor con el nombre '" + nombre + "'"));
+                Proveedor proveedor = proveedorDAO.obtenerProveedorPorNombre(nombre);
+                if (proveedor != null) {
+                    List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorProveedorId(proveedor.getId());
+                    tablaProveedores.getItems().setAll(cuentas);
+                    tablaProveedores.setVisible(true);
+                    tablaProveedores.setManaged(true);
+                    Text proveedorLabel = new Text("Proveedor: ");proveedorLabel.setStyle("-fx-font-weight: bold");
+                    Text nombreText = new Text(proveedor.getNombre() + ", ");
+                    Text razonLabel = new Text("Razón Social: ");razonLabel.setStyle("-fx-font-weight: bold");
+                    Text razonText = new Text(proveedor.getRazonSocial() + ", ");
+                    Text cuitLabel = new Text("CUIT: ");cuitLabel.setStyle("-fx-font-weight: bold");
+                    Text cuitText = new Text(proveedor.getCUIT());
+
+                    resumenClienteText.getChildren().setAll(
+                            proveedorLabel, nombreText,
+                            razonLabel, razonText,
+                            cuitLabel, cuitText
+                    );
+
+                    // Añadir el manejador de doble clic para la tabla de proveedores
+                    tablaProveedores.setRowFactory(tv -> {
+                        TableRow<CuentaCorriente> row = new TableRow<>();
+                        row.setOnMouseClicked(event -> {
+                            if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                                CuentaCorriente cuentaSeleccionada = row.getItem();
+                                mostrarVentanaComprobantes(cuentaSeleccionada.getId(), cuentaSeleccionada.getFecha().format(formatter), nombre);
+                            }
+                        });
+                        return row;
+                    });
+                } else {
+                    tablaCuentas.getItems().clear();
+                    tablaProveedores.getItems().clear();
+                    resumenClienteText.getChildren().setAll(new Text("No se encontró cliente/proveedor con el nombre '" + nombre + "'"));
+                }
             }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            mostrarError("Error de base de datos al buscar cliente/proveedor o sus cuentas: " + ex.getMessage());
         }
+    }
+
+    private void mostrarError(String mensaje) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
+        alert.setContentText(mensaje);
+        alert.showAndWait();
     }
 }

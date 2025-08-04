@@ -12,9 +12,11 @@ import main.AppController;
 import model.*;
 import dao.*;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -787,19 +789,13 @@ public class EjecutarController {
                             }
 
                             String cuit = getText(cuitField);
-                            if (!cuit.isEmpty()) {
-                                existente.setCUIT(cuit);
-                            }
+                            if (!cuit.isEmpty()) { existente.setCUIT(cuit); }
 
                             String categoria = getText(categoriaField);
-                            if (!categoria.isEmpty()) {
-                                existente.setCategoria(categoria);
-                            }
+                            if (!categoria.isEmpty()) { existente.setCategoria(categoria); }
 
                             String contacto = getText(contactoField);
-                            if (!contacto.isEmpty()) {
-                                existente.setContacto(contacto);
-                            }
+                            if (!contacto.isEmpty()) { existente.setContacto(contacto); }
 
                             dao.actualizarProveedor(existente);
                             info.setTitle("Éxito");
@@ -913,94 +909,124 @@ public class EjecutarController {
     }
 
     private void mostrarVentanaComprobantes(int movimientoId, String fecha, String persona) {
-        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
-        List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
+        ComprobanteDAO comprobanteDAO = null;
+        List<Comprobante> comprobantes = null;
 
-        Stage ventana = new Stage();
-        ventana.setTitle("Dia " + fecha + ", Cliente/Proveedor " + persona);
+        try {
+            comprobanteDAO = new ComprobanteDAO();
+            comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
 
-        TableView<Comprobante> tablaComprobantes = new TableView<>();
+            if (comprobantes == null) {
+                comprobantes = new ArrayList<>();
+            }
 
-        TableColumn<Comprobante, String> cantidadCol = new TableColumn<>("Cantidad");
-        cantidadCol.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
+            Stage ventana = new Stage();
+            ventana.setTitle("Dia " + fecha + ", Cliente/Proveedor " + persona);
 
-        TableColumn<Comprobante, String> productoCol = new TableColumn<>("Producto");
-        productoCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+            TableView<Comprobante> tablaComprobantes = new TableView<>();
 
-        TableColumn<Comprobante, Number> totalCol = new TableColumn<>("Precio Unitario");
-        totalCol.setCellValueFactory(data -> {
-            int cantidad = data.getValue().getCantidad();
-            double precio = data.getValue().getPrecio();
-            return new javafx.beans.property.SimpleDoubleProperty(precio / cantidad);
-        });
+            TableColumn<Comprobante, String> cantidadCol = new TableColumn<>("Cantidad");
+            cantidadCol.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
 
-        TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Total");
-        precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
-        precioCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
+            TableColumn<Comprobante, String> productoCol = new TableColumn<>("Producto");
+            productoCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
 
-        tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, totalCol, precioCol);
-        tablaComprobantes.getItems().addAll(comprobantes);
-        tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+            TableColumn<Comprobante, Number> totalCol = new TableColumn<>("Precio Unitario");
+            totalCol.setCellValueFactory(data -> {
+                int cantidad = data.getValue().getCantidad();
+                double precio = data.getValue().getPrecio();
+                return new javafx.beans.property.SimpleDoubleProperty(precio / cantidad);
+            });
 
-        double totalGeneral = comprobantes.stream()
-                .mapToDouble(c -> c.getCantidad() * c.getPrecio())
-                .sum();
+            TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Total");
+            precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
+            precioCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
 
-        Label totalLabel = new Label(String.format("TOTAL: $ %.2f", totalGeneral));
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+            tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, totalCol, precioCol);
+            tablaComprobantes.getItems().addAll(comprobantes);
+            tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        VBox layout = new VBox(10, new Label("Comprobantes:"), tablaComprobantes, totalLabel);
-        layout.setPadding(new Insets(10));
+            double totalGeneral = comprobantes.stream()
+                    .mapToDouble(c -> c.getCantidad() * c.getPrecio())
+                    .sum();
 
-        Scene escena = new Scene(layout, 800, 600);
-        ventana.setScene(escena);
-        ventana.initModality(Modality.APPLICATION_MODAL);
-        ventana.showAndWait();
+            Label totalLabel = new Label(String.format("TOTAL: $ %.2f", totalGeneral));
+            totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+
+            VBox layout = new VBox(10, new Label("Comprobantes:"), tablaComprobantes, totalLabel);
+            layout.setPadding(new Insets(10));
+
+            Scene escena = new Scene(layout, 800, 600);
+            ventana.setScene(escena);
+            ventana.initModality(Modality.APPLICATION_MODAL);
+            ventana.showAndWait();
+
+        } catch (SQLException e) {
+            System.err.println("Error de base de datos al mostrar comprobantes: " + e.getMessage());
+            e.printStackTrace();
+            mostrarError("Ocurrió un error al cargar los comprobantes: " + e.getMessage());
+        }
     }
 
     private void mostrarVentanaComprobantesProveedores(int movimientoId, String fecha, String persona) {
-        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
-        List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
+        ComprobanteDAO comprobanteDAO = null; // Inicializar a null
+        List<Comprobante> comprobantes = null; // Inicializar a null
 
-        Stage ventana = new Stage();
-        ventana.setTitle("Dia " + fecha + ", Cliente/Proveedor " + persona);
+        try {
+            // Estas dos líneas pueden lanzar SQLException
+            comprobanteDAO = new ComprobanteDAO();
+            comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(movimientoId);
 
-        TableView<Comprobante> tablaComprobantes = new TableView<>();
+            // Asegurar que la lista no sea null antes de usarla, si no hubo excepción
+            if (comprobantes == null) {
+                comprobantes = new ArrayList<>();
+            }
 
-        TableColumn<Comprobante, String> cantidadCol = new TableColumn<>("Cantidad");
-        cantidadCol.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
+            Stage ventana = new Stage();
+            ventana.setTitle("Dia " + fecha + ", Cliente/Proveedor " + persona);
 
-        TableColumn<Comprobante, String> productoCol = new TableColumn<>("Producto");
-        productoCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+            TableView<Comprobante> tablaComprobantes = new TableView<>();
 
-        TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Precio");
-        precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
+            TableColumn<Comprobante, String> cantidadCol = new TableColumn<>("Cantidad");
+            cantidadCol.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
 
-        TableColumn<Comprobante, Number> totalCol = new TableColumn<>("Total");
-        totalCol.setCellValueFactory(data -> {
-            int cantidad = data.getValue().getCantidad();
-            double precio = data.getValue().getPrecio();
-            return new javafx.beans.property.SimpleDoubleProperty(precio * cantidad);
-        });
-        totalCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
+            TableColumn<Comprobante, String> productoCol = new TableColumn<>("Producto");
+            productoCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
 
-        tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, precioCol, totalCol);
-        tablaComprobantes.getItems().addAll(comprobantes);
-        tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+            TableColumn<Comprobante, Double> precioCol = new TableColumn<>("Precio");
+            precioCol.setCellValueFactory(new PropertyValueFactory<>("precio"));
 
-        double totalGeneral = comprobantes.stream()
-                .mapToDouble(c -> c.getCantidad() * c.getPrecio())
-                .sum();
+            TableColumn<Comprobante, Number> totalCol = new TableColumn<>("Total");
+            totalCol.setCellValueFactory(data -> {
+                int cantidad = data.getValue().getCantidad();
+                double precio = data.getValue().getPrecio();
+                return new javafx.beans.property.SimpleDoubleProperty(precio * cantidad);
+            });
+            totalCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
 
-        Label totalLabel = new Label(String.format("TOTAL: $ %.2f", totalGeneral));
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+            tablaComprobantes.getColumns().addAll(cantidadCol, productoCol, precioCol, totalCol);
+            tablaComprobantes.getItems().addAll(comprobantes);
+            tablaComprobantes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        VBox layout = new VBox(10, new Label("Comprobantes:"), tablaComprobantes, totalLabel);
-        layout.setPadding(new Insets(10));
+            double totalGeneral = comprobantes.stream()
+                    .mapToDouble(c -> c.getCantidad() * c.getPrecio())
+                    .sum();
 
-        Scene escena = new Scene(layout, 800, 600);
-        ventana.setScene(escena);
-        ventana.initModality(Modality.APPLICATION_MODAL);
-        ventana.showAndWait();
+            Label totalLabel = new Label(String.format("TOTAL: $ %.2f", totalGeneral));
+            totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+
+            VBox layout = new VBox(10, new Label("Comprobantes:"), tablaComprobantes, totalLabel);
+            layout.setPadding(new Insets(10));
+
+            Scene escena = new Scene(layout, 800, 600);
+            ventana.setScene(escena);
+            ventana.initModality(Modality.APPLICATION_MODAL);
+            ventana.showAndWait();
+
+        } catch (SQLException e) {
+            System.err.println("Error de base de datos al mostrar comprobantes de proveedores: " + e.getMessage());
+            e.printStackTrace();
+            mostrarError("Ocurrió un error al cargar los comprobantes de proveedores: " + e.getMessage());
+        }
     }
 }

@@ -11,11 +11,11 @@ import java.util.List;
 public class CuentaCorrienteDAO {
     private Connection connection;
 
-    public CuentaCorrienteDAO() {
+    public CuentaCorrienteDAO() throws SQLException {
         this.connection = ConexionMySQL.conectar();
     }
 
-    public void crearTransaccion(CuentaCorriente cuentaCorriente) {
+    public void crearTransaccion(CuentaCorriente cuentaCorriente) throws SQLException {
         String query = "INSERT INTO cuenta_corriente(cliente_id, proveedor_id, fecha, tipo, comprobante, neto, iva, otros, venta, monto, saldo, observacion) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
@@ -52,12 +52,10 @@ public class CuentaCorrienteDAO {
                     System.err.println("Error: No se pudo obtener el ID generado para la transacción.");
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Error al crear transacción: " + e.getMessage());
         }
     }
 
-    public List<CuentaCorriente> obtenerMovimientosPorClienteId(int clienteId) {
+    public List<CuentaCorriente> obtenerMovimientosPorClienteId(int clienteId) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
         String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? ORDER BY fecha ASC";
 
@@ -88,13 +86,11 @@ public class CuentaCorrienteDAO {
 
                 movimientos.add(cuenta);
             }
-        } catch (SQLException e) {
-            System.err.println("Error al obtener movimientos por cliente: " + e.getMessage());
         }
         return movimientos;
     }
 
-    public List<CuentaCorriente> obtenerMovimientosPorProveedorId(int proveedorId) {
+    public List<CuentaCorriente> obtenerMovimientosPorProveedorId(int proveedorId) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
         String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? ORDER BY fecha ASC";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
@@ -124,13 +120,11 @@ public class CuentaCorrienteDAO {
 
                 movimientos.add(cuenta);
             }
-        } catch (SQLException e) {
-            System.err.println("Error al obtener movimientos por proveedor: " + e.getMessage());
         }
         return movimientos;
     }
 
-    public CuentaCorriente obtenerPorComprobante(String numeroRemito) {
+    public CuentaCorriente obtenerPorComprobante(String numeroRemito) throws SQLException {
         CuentaCorriente cuenta = null;
 
         String query = "SELECT * FROM cuenta_corriente WHERE comprobante = ?";
@@ -161,14 +155,11 @@ public class CuentaCorrienteDAO {
                 List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);
                 cuenta.setComprobantes(comprobantes);
             }
-        } catch (SQLException e) {
-            System.err.println("Error al buscar CuentaCorriente por número de remito: " + e.getMessage());
         }
-
         return cuenta;
     }
 
-    public void actualizarTransaccion(CuentaCorriente cuentaCorriente) {
+    public void actualizarTransaccion(CuentaCorriente cuentaCorriente) throws SQLException {
         String query = "UPDATE cuenta_corriente SET cliente_id = ?, proveedor_id = ?, fecha = ?, tipo = ?, " +
                 "comprobante = ?, venta = ?, monto = ?, saldo = ?, observacion = ?, neto = ?, iva = ?, otros = ? WHERE id = ?";
 
@@ -193,67 +184,65 @@ public class CuentaCorrienteDAO {
             } else {
                 System.out.println("No se encontró la transacción con el ID especificado.");
             }
-        } catch (SQLException e) {
-            System.err.println("Error al actualizar transacción: " + e.getMessage());
         }
     }
 
-    public CuentaCorriente obtenerTransaccionEspecifica(Integer clienteId, Integer proveedorId, LocalDate fecha, String comprobante) {
+    public CuentaCorriente obtenerTransaccionEspecifica(Integer clienteId, Integer proveedorId, LocalDate fecha, String comprobante) throws SQLException {
         CuentaCorriente cuenta = null;
         String query;
-        PreparedStatement pstmt;
 
-        try {
+        if (clienteId == null && proveedorId == null) {
+            return null;
+        }
+
+        // Determinar la consulta basada en si es un cliente o un proveedor
+        if (clienteId != null) {
+            query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? AND fecha = ? AND comprobante = ?";
+        } else { // proveedorId != null
+            query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND fecha = ? AND comprobante = ?";
+        }
+
+        // Usar try-with-resources para asegurar que PreparedStatement y ResultSet se cierren automáticamente
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             if (clienteId != null) {
-                query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? AND fecha = ? AND comprobante = ?";
-                pstmt = connection.prepareStatement(query);
                 pstmt.setInt(1, clienteId);
-            } else if (proveedorId != null) {
-                query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND fecha = ? AND comprobante = ?";
-                pstmt = connection.prepareStatement(query);
-                pstmt.setInt(1, proveedorId);
             } else {
-                return null; // O lanzar una excepción si no se proporciona ni clienteId ni proveedorId
+                pstmt.setInt(1, proveedorId);
             }
 
             pstmt.setDate(2, Date.valueOf(fecha));
             pstmt.setString(3, comprobante);
 
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                int id = rs.getInt("id");
-                LocalDate dbFecha = rs.getDate("fecha").toLocalDate();
-                String tipo = rs.getString("tipo");
-                String dbComprobante = rs.getString("comprobante");
-                double venta = rs.getDouble("venta");
-                double monto = rs.getDouble("monto");
-                double saldo = rs.getDouble("saldo");
-                String observacion = rs.getString("observacion");
-                double neto = rs.getDouble("neto");
-                double iva = rs.getDouble("iva");
-                double otros = rs.getDouble("otros");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    int id = rs.getInt("id");
+                    LocalDate dbFecha = rs.getDate("fecha").toLocalDate();
+                    String tipo = rs.getString("tipo");
+                    String dbComprobante = rs.getString("comprobante");
+                    double venta = rs.getDouble("venta");
+                    double monto = rs.getDouble("monto");
+                    double saldo = rs.getDouble("saldo");
+                    String observacion = rs.getString("observacion");
+                    double neto = rs.getDouble("neto");
+                    double iva = rs.getDouble("iva");
+                    double otros = rs.getDouble("otros");
 
-                cuenta = new CuentaCorriente(id, dbFecha, tipo, dbComprobante, venta, monto, saldo, observacion, neto, iva, otros);
-                if (clienteId != null) {
-                    cuenta.setClienteId(clienteId);
-                } else {
-                    cuenta.setProveedorId(proveedorId);
+                    cuenta = new CuentaCorriente(id, dbFecha, tipo, dbComprobante, venta, monto, saldo, observacion, neto, iva, otros);
+                    if (clienteId != null) {
+                        cuenta.setClienteId(clienteId);
+                    } else {
+                        cuenta.setProveedorId(proveedorId);
+                    }
+                    ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
+                    List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);
+                    cuenta.setComprobantes(comprobantes);
                 }
-
-                // Cargar comprobantes asociados si tu lógica los necesita al recuperar
-                ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
-                List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);
-                cuenta.setComprobantes(comprobantes);
             }
-            pstmt.close(); // Cerrar el PreparedStatement
-        } catch (SQLException e) {
-            System.err.println("Error al buscar CuentaCorriente específica: " + e.getMessage());
-            e.printStackTrace();
         }
         return cuenta;
     }
 
-    public boolean eliminarTransaccionPorId(int idTransaccion) {
+    public boolean eliminarTransaccionPorId(int idTransaccion) throws SQLException {
         String query = "DELETE FROM cuenta_corriente WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setInt(1, idTransaccion);
@@ -265,14 +254,10 @@ public class CuentaCorrienteDAO {
                 System.out.println("No se encontró la transacción con ID " + idTransaccion + " para eliminar.");
                 return false;
             }
-        } catch (SQLException e) {
-            System.err.println("Error al eliminar transacción físicamente: " + e.getMessage());
-            // Aquí puedes lanzar una excepción personalizada o manejarla de forma más robusta
-            return false;
         }
     }
 
-    public List<CuentaCorriente> obtenerTodasLasTransaccionesOrdenadasPorFechaCliente(int clienteId) {
+    public List<CuentaCorriente> obtenerTodasLasTransaccionesOrdenadasPorFechaCliente(int clienteId) throws SQLException {
         List<CuentaCorriente> lista = new ArrayList<>();
         String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? ORDER BY fecha ASC";
 
@@ -303,14 +288,11 @@ public class CuentaCorrienteDAO {
 
                 lista.add(cc);
             }
-        } catch (SQLException e) {
-            System.err.println("Error al obtener todas las transacciones: " + e.getMessage());
         }
-
         return lista;
     }
 
-    public List<CuentaCorriente> obtenerTodasLasTransaccionesOrdenadasPorFechaProveedor(int proveedorId) {
+    public List<CuentaCorriente> obtenerTodasLasTransaccionesOrdenadasPorFechaProveedor(int proveedorId) throws SQLException {
         List<CuentaCorriente> lista = new ArrayList<>();
         String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? ORDER BY fecha ASC";
 
@@ -341,24 +323,20 @@ public class CuentaCorrienteDAO {
 
                 lista.add(cc);
             }
-        } catch (SQLException e) {
-            System.err.println("Error al obtener todas las transacciones: " + e.getMessage());
         }
-
         return lista;
     }
 
-    public List<CuentaCorriente> obtenerMovimientosPorClienteYFechas(int clienteId, LocalDate fechaInicio, LocalDate fechaFin) {
+    public List<CuentaCorriente> obtenerMovimientosPorClienteYFechas(int clienteId, LocalDate fechaInicio, LocalDate fechaFin) throws SQLException { // ¡ÚNICO CAMBIO: Agregado throws SQLException!
         List<CuentaCorriente> movimientos = new ArrayList<>();
         String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? AND fecha BETWEEN ? AND ? ORDER BY fecha ASC";
-
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setInt(1, clienteId);
-            pstmt.setDate(2, Date.valueOf(fechaInicio)); // Convierte LocalDate a java.sql.Date
-            pstmt.setDate(3, Date.valueOf(fechaFin));     // Convierte LocalDate a java.sql.Date
+            pstmt.setDate(2, java.sql.Date.valueOf(fechaInicio));
+            pstmt.setDate(3, java.sql.Date.valueOf(fechaFin));
 
             ResultSet rs = pstmt.executeQuery();
-            ComprobanteDAO comprobanteDAO = new ComprobanteDAO(); // Asumiendo que tienes un ComprobanteDAO para cargar los comprobantes asociados
+            ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
 
             while (rs.next()) {
                 int id = rs.getInt("id");
@@ -377,19 +355,15 @@ public class CuentaCorrienteDAO {
                         observacion, neto, iva, otros);
                 cuenta.setClienteId(clienteId);
 
-                // Cargar comprobantes asociados (si aplica y ComprobanteDAO lo permite)
                 List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);
                 cuenta.setComprobantes(comprobantes);
-
                 movimientos.add(cuenta);
             }
-        } catch (SQLException e) {
-            System.err.println("Error al obtener movimientos de cuenta corriente por cliente y fechas: " + e.getMessage());
         }
         return movimientos;
     }
 
-    public List<CuentaCorriente> obtenerMovimientosPorProveedorYTipoYFechas(int idProveedor, String tipoMovimiento, LocalDate fechaInicio, LocalDate fechaFin) {
+    public List<CuentaCorriente> obtenerMovimientosPorProveedorYTipoYFechas(int idProveedor, String tipoMovimiento, LocalDate fechaInicio, LocalDate fechaFin) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
         // Query para filtrar por id_proveedor, tipo y rango de fechas
         String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND LOWER(tipo) = LOWER(?) AND fecha BETWEEN ? AND ? ORDER BY fecha ASC";
@@ -427,9 +401,6 @@ public class CuentaCorrienteDAO {
                     movimientos.add(cuenta);
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Error al obtener movimientos de cuenta corriente por proveedor, tipo y fechas: " + e.getMessage());
-            e.printStackTrace();
         }
         return movimientos;
     }
