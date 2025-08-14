@@ -11,10 +11,10 @@ public class Main extends Application {
     public void start(Stage stage) {
         primaryStage = stage;
         AppController controller = new AppController();
-        controller.init(stage); // Delegamos a AppController
+        controller.init(stage);
     }
 
-    // Nuevo método para obtener el Stage principal
+    // Método para obtener el Stage principal
     public static Stage getPrimaryStage() {
         return primaryStage;
     }

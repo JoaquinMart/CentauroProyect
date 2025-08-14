@@ -1,5 +1,6 @@
 package controllers;
 
+import javafx.scene.image.Image;
 import javafx.scene.text.Text;
 import main.AppController;
 import model.*;
@@ -16,30 +17,178 @@ import javafx.stage.Stage;
 
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class BuscarController {
 
     private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/M/yyyy");
 
-    public void handleBotonBuscar(
+    // Método para inicializar el controlador con la lógica de autocompletado
+    public void setup(
             TextField buscarNombreField,
+            TableView<SugerenciaBusqueda> tablaSugerencias,
             TableView<CuentaCorriente> tablaCuentas,
             TableView<CuentaCorriente> tablaProveedores,
-            TextFlow resumenClienteText,
-            Alert alerta
+            TextFlow resumenClienteText
     ) {
-        String nombre = buscarNombreField.getText().trim();
-        if (nombre.isEmpty()) {
-            alerta.setTitle("Error");
-            alerta.setContentText("Escribe un nombre para buscar.");
-            alerta.showAndWait();
-            return;
-        }
-        mostrarCuentasYResumen(nombre, tablaCuentas, tablaProveedores, resumenClienteText);
-        buscarNombreField.clear();
+        // Listener que se activa al escribir
+        buscarNombreField.textProperty().addListener((observable, oldValue, newValue) -> {
+            mostrarSugerencias(newValue, tablaSugerencias, tablaCuentas, tablaProveedores, resumenClienteText);
+        });
+
+        // Listener para la tecla ENTER en el TextField
+        buscarNombreField.setOnKeyReleased(event -> {
+            if (event.getCode().toString().equals("ENTER")) {
+                handleBotonBuscar(tablaSugerencias, tablaCuentas, tablaProveedores, resumenClienteText);
+            }
+        });
     }
 
+    // Método que se llama al escribir en el TextField
+    private void mostrarSugerencias(
+            String nombre,
+            TableView<SugerenciaBusqueda> tablaSugerencias,
+            TableView<CuentaCorriente> tablaCuentas,
+            TableView<CuentaCorriente> tablaProveedores,
+            TextFlow resumenClienteText
+    ) {
+        try {
+            ClienteDAO clienteDAO = new ClienteDAO();
+            ProveedorDAO proveedorDAO = new ProveedorDAO();
+
+            tablaSugerencias.getItems().clear();
+            tablaSugerencias.getColumns().clear();
+            tablaCuentas.setVisible(false);
+            tablaProveedores.setVisible(false);
+            resumenClienteText.getChildren().clear();
+
+            if (nombre.isEmpty()) {
+                tablaSugerencias.setVisible(false);
+                tablaSugerencias.setManaged(false);
+                resumenClienteText.getChildren().add(new Text("Seleccioná un cliente/proveedor..."));
+                return;
+            }
+
+            List<Cliente> clientesCoincidentes = clienteDAO.obtenerClientesPorNombreParcial(nombre);
+            List<Proveedor> proveedoresCoincidentes = proveedorDAO.obtenerProveedoresPorNombreParcial(nombre);
+
+            List<SugerenciaBusqueda> sugerencias = new ArrayList<>();
+            clientesCoincidentes.forEach(c -> sugerencias.add(new SugerenciaBusqueda(c)));
+            proveedoresCoincidentes.forEach(p -> sugerencias.add(new SugerenciaBusqueda(p)));
+
+            if (!sugerencias.isEmpty()) {
+                tablaSugerencias.setVisible(true);
+                tablaSugerencias.setManaged(true);
+                tablaSugerencias.getItems().setAll(sugerencias);
+
+                TableColumn<SugerenciaBusqueda, String> tipoCol = new TableColumn<>("Tipo");
+                tipoCol.setCellValueFactory(new PropertyValueFactory<>("tipo"));
+                TableColumn<SugerenciaBusqueda, String> nombreCol = new TableColumn<>("Nombre");
+                nombreCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+                TableColumn<SugerenciaBusqueda, String> razonSocialCol = new TableColumn<>("Razón Social");
+                razonSocialCol.setCellValueFactory(new PropertyValueFactory<>("razonSocial"));
+
+                tablaSugerencias.getColumns().addAll(tipoCol, nombreCol, razonSocialCol);
+            } else {
+                tablaSugerencias.setVisible(false);
+                resumenClienteText.getChildren().add(new Text("No se encontraron coincidencias..."));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            mostrarError("Error al buscar sugerencias.");
+        }
+    }
+
+    // Método que se llama al presionar el botón "Buscar"
+    public void handleBotonBuscar(
+            TableView<SugerenciaBusqueda> tablaSugerencias,
+            TableView<CuentaCorriente> tablaCuentas,
+            TableView<CuentaCorriente> tablaProveedores,
+            TextFlow resumenClienteText
+    ) {
+        SugerenciaBusqueda seleccion = tablaSugerencias.getSelectionModel().getSelectedItem();
+        if (seleccion != null) {
+            try {
+                // Aquí usamos el método principal para cargar las cuentas
+                mostrarCuentasYResumen(seleccion.getNombre(), tablaSugerencias, tablaCuentas, tablaProveedores, resumenClienteText);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                mostrarError("Error al cargar la cuenta corriente.");
+            }
+        } else {
+            mostrarError("Selecciona un cliente/proveedor de la lista.");
+        }
+    }
+
+    // Método que muestra las cuentas y resumen del cliente o proveedor seleccionado
+    public void mostrarCuentasYResumen(
+            String nombre,
+            TableView<SugerenciaBusqueda> tablaSugerencias,
+            TableView<CuentaCorriente> tablaCuentas,
+            TableView<CuentaCorriente> tablaProveedores,
+            TextFlow resumenClienteText
+    ) throws SQLException {
+        tablaSugerencias.setVisible(false);
+        tablaSugerencias.setManaged(false);
+
+        tablaCuentas.getItems().clear();
+        tablaProveedores.getItems().clear();
+        resumenClienteText.getChildren().clear();
+
+        ClienteDAO clienteDAO = new ClienteDAO();
+        ProveedorDAO proveedorDAO = new ProveedorDAO();
+        CuentaCorrienteDAO cuentaDAO = new CuentaCorrienteDAO();
+
+        Cliente cliente = clienteDAO.obtenerClientePorNombre(nombre);
+        if (cliente != null) {
+            List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorClienteId(cliente.getId());
+            tablaCuentas.getItems().setAll(cuentas);
+            tablaCuentas.setVisible(true);
+            tablaCuentas.setManaged(true);
+
+            Text clienteLabel = new Text("Cliente: ");
+            clienteLabel.setStyle("-fx-font-weight: bold");
+            Text nombreText = new Text(cliente.getNombre() + ".");
+            resumenClienteText.getChildren().setAll(clienteLabel, nombreText);
+            tablaCuentas.setRowFactory(tv -> {
+                TableRow<CuentaCorriente> row = new TableRow<>();
+                row.setOnMouseClicked(event -> {
+                    if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                        CuentaCorriente cuentaSeleccionada = row.getItem();
+                        mostrarVentanaComprobantes(cuentaSeleccionada.getId(), cuentaSeleccionada.getFecha().format(formatter), nombre);
+                    }
+                });
+                return row;
+            });
+        } else {
+            Proveedor proveedor = proveedorDAO.obtenerProveedorPorNombre(nombre);
+            if (proveedor != null) {
+                List<CuentaCorriente> cuentas = cuentaDAO.obtenerMovimientosPorProveedorId(proveedor.getId());
+                tablaProveedores.getItems().setAll(cuentas);
+                tablaProveedores.setVisible(true);
+                tablaProveedores.setManaged(true);
+                Text proveedorLabel = new Text("Proveedor: ");
+                proveedorLabel.setStyle("-fx-font-weight: bold");
+                Text nombreText = new Text(proveedor.getNombre() + ", ");
+                resumenClienteText.getChildren().setAll(proveedorLabel, nombreText);
+                tablaProveedores.setRowFactory(tv -> {
+                    TableRow<CuentaCorriente> row = new TableRow<>();
+                    row.setOnMouseClicked(event -> {
+                        if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                            CuentaCorriente cuentaSeleccionada = row.getItem();
+                            mostrarVentanaComprobantes(cuentaSeleccionada.getId(), cuentaSeleccionada.getFecha().format(formatter), nombre);
+                        }
+                    });
+                    return row;
+                });
+            } else {
+                resumenClienteText.getChildren().setAll(new Text("No se encontró cliente/proveedor con el nombre '" + nombre + "'"));
+            }
+        }
+    }
+
+    // Método que muestra los comprobantes de una cuenta corriente seleccionada
     private void mostrarVentanaComprobantes(int movimientoId, String fecha, String persona) {
         ComprobanteDAO comprobanteDAO;
         List<Comprobante> comprobantes;
@@ -95,12 +244,14 @@ public class BuscarController {
         layout.setPadding(new Insets(10));
 
         Scene escena = new Scene(layout, 900, 600);
+        ventana.getIcons().add(new Image(ImprimirController.class.getResourceAsStream("/icono.png")));
         escena.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         ventana.setScene(escena);
         ventana.initModality(Modality.APPLICATION_MODAL);
         ventana.showAndWait();
     }
 
+    // Método que muestra las cuentas y resumen del cliente o proveedor seleccionado (para sugerencias)
     public void mostrarCuentasYResumen(String nombre, TableView<CuentaCorriente> tablaCuentas, TableView<CuentaCorriente> tablaProveedores, TextFlow resumenClienteText) {
         ClienteDAO clienteDAO;
         ProveedorDAO proveedorDAO;
@@ -201,6 +352,7 @@ public class BuscarController {
         }
     }
 
+    // Método para simplificar los mensajes de error
     private void mostrarError(String mensaje) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");

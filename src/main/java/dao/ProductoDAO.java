@@ -1,15 +1,17 @@
 package dao;
 
-import util.ConexionMySQL; // Importa tu utilidad de conexión
-import model.Producto;     // Importa el modelo Producto (asegúrate de tenerlo en el paquete 'model')
+import util.ConexionMySQL;
+import model.Producto;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.ResultSet; // Necesario para obtener las claves generadas (ID)
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ProductoDAO {
+
+    // Método para crear el producto
     public boolean crearProducto(Producto producto) throws SQLException {
         String sql = "INSERT INTO productos (codigo, nombre, precio) VALUES (?, ?, ?)";
         try (Connection conn = ConexionMySQL.conectar();
@@ -32,6 +34,7 @@ public class ProductoDAO {
         }
     }
 
+    // Método para modificar el producto
     public boolean modificarProducto(Producto producto) throws SQLException {
         String sql = "UPDATE productos SET codigo = ?, nombre = ?, precio = ? WHERE id = ?";
         try (Connection conn = ConexionMySQL.conectar();
@@ -50,6 +53,7 @@ public class ProductoDAO {
         }
     }
 
+    // Método para obtener todos los productos
     public List<Producto> obtenerProductos() throws SQLException {
         List<Producto> productos = new ArrayList<>();
         String sql = "SELECT id, codigo, nombre, precio FROM productos ORDER BY codigo ASC";
@@ -70,6 +74,7 @@ public class ProductoDAO {
         return productos;
     }
 
+    // Método para buscar un producto por su codigo
     public Producto buscarProductoPorCodigo(String codigo) throws SQLException {
         String sql = "SELECT id, codigo, nombre, precio FROM productos WHERE codigo = ?";
         Producto producto = null;
@@ -90,6 +95,7 @@ public class ProductoDAO {
         return producto;
     }
 
+    // Método para eliminar un producto
     public boolean eliminarProducto(String codigoProducto) throws SQLException {
         String query = "DELETE FROM productos WHERE codigo = ?";
         try (Connection conn = ConexionMySQL.conectar();

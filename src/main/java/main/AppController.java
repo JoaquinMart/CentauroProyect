@@ -1,3 +1,4 @@
+// TODO LO QUE TENGA (M) SON COSAS A MODIFICAR
 package main;
 
 import dao.ProductoDAO;
@@ -6,6 +7,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
@@ -18,6 +23,7 @@ import model.*;
 import util.*;
 
 import java.io.InputStream;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -29,9 +35,15 @@ public class AppController {
     private ProductoDAO productoDAO;
     private Label nombreProductoPreviewLabel;
     private Button botonEjecutar;
+    private TableView<SugerenciaBusqueda> tablaSugerencias;
 
     public void init(Stage stage) {
-        ConexionMySQL.conectar();
+        try (Connection conn = ConexionMySQL.conectar()) {
+            ConexionMySQL.crearTablas(conn);
+        } catch (SQLException e) {
+            System.err.println("Error al conectar a la base de datos o al crear las tablas.");
+            e.printStackTrace();
+        }
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/M/yyyy");
 
         TextFlow resumenClienteText = new TextFlow();
@@ -152,7 +164,7 @@ public class AppController {
         fechaCol.getStyleClass().add("custom-table-column");
         TableColumn<CuentaCorriente, String> numCol = new TableColumn<>("N° Remito");
         numCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getComprobante()));
-        numCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.11));
+        numCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
         numCol.getStyleClass().add("custom-table-column");
         TableColumn<CuentaCorriente, String> tipoCol = new TableColumn<>("Tipo");
         tipoCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getTipo()));
@@ -170,7 +182,7 @@ public class AppController {
         montoCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
         TableColumn<CuentaCorriente, Number> saldoCol = new TableColumn<>("Saldo");
         saldoCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getSaldo()));
-        saldoCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.20));
+        saldoCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.21));
         saldoCol.getStyleClass().add("custom-table-column");
         saldoCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
 
@@ -208,7 +220,6 @@ public class AppController {
         tablaCuentas.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         // TABLA DE PROVEEDORES
-
         TableView<CuentaCorriente> tablaProveedores = new TableView<>();
 
         TableColumn<CuentaCorriente, String> fechaProvCol = new TableColumn<>("Fecha");
@@ -223,7 +234,7 @@ public class AppController {
         TableColumn<CuentaCorriente, String> numProvCol = new TableColumn<>("N° Remito");
         numProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getComprobante()));
         numProvCol.getStyleClass().add("custom-table-column");
-        numProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
+        numProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.09));
 
         TableColumn<CuentaCorriente, String> tipoProvCol = new TableColumn<>("Tipo");
         tipoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getTipo()));
@@ -246,7 +257,7 @@ public class AppController {
         otrosProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getOtros()));
         otrosProvCol.getStyleClass().add("custom-table-column");
         otrosProvCol.setCellFactory(AppController.getDecimalFormatCellFactory());
-        otrosProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.10));
+        otrosProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.09));
 
         TableColumn<CuentaCorriente, Number> ventaProvCol = new TableColumn<>("Venta");
         ventaProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getVenta()));
@@ -264,7 +275,7 @@ public class AppController {
         saldoProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().getSaldo()));
         saldoProvCol.getStyleClass().add("custom-table-column");
         saldoProvCol.setCellFactory(AppController.getCurrencyFormatCellFactory());
-        saldoProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.11));
+        saldoProvCol.prefWidthProperty().bind(tablaCuentas.widthProperty().multiply(0.13));
 
         TableColumn<CuentaCorriente, String> obsProvCol = new TableColumn<>("Observación");
         obsProvCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getObservacion()));
@@ -298,6 +309,34 @@ public class AppController {
 
         tablaProveedores.getColumns().addAll(fechaProvCol, numProvCol, tipoProvCol, netoProvCol, ivaProvCol, otrosProvCol, ventaProvCol, montoProvCol, saldoProvCol, obsProvCol);
         tablaProveedores.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+
+        // TABLA DE SUGERENCIAS
+        tablaSugerencias = new TableView<>();
+        tablaSugerencias.getStyleClass().add("sugerencias-table");
+        tablaSugerencias.setVisible(false);
+        tablaSugerencias.setPrefWidth(700);
+        tablaSugerencias.setMaxWidth(700);
+
+        tablaSugerencias.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        TableColumn<SugerenciaBusqueda, String> tipoSCol = new TableColumn<>("Tipo");
+        tipoSCol.setCellValueFactory(new PropertyValueFactory<>("tipo"));
+        TableColumn<SugerenciaBusqueda, String> nombreSCol = new TableColumn<>("Nombre");
+        nombreSCol.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+        TableColumn<SugerenciaBusqueda, String> razonSSocialCol = new TableColumn<>("Razón Social");
+        razonSSocialCol.setCellValueFactory(new PropertyValueFactory<>("razonSocial"));
+        tablaSugerencias.getColumns().addAll(tipoSCol, nombreSCol, razonSSocialCol);
+        tablaSugerencias.setPrefHeight(0);
+        tablaSugerencias.getItems().addListener((javafx.collections.ListChangeListener<SugerenciaBusqueda>) c -> {
+            int rowCount = tablaSugerencias.getItems().size();
+            if (rowCount == 0) {
+                tablaSugerencias.setPrefHeight(0);
+                return;
+            }
+            double rowHeight = 28;
+            double headerHeight = 30;
+            double newHeight = (rowCount * rowHeight) + headerHeight;
+            tablaSugerencias.setPrefHeight(newHeight);
+        });
 
         // Botones
         botonEjecutar = new Button("Ejecutar");
@@ -367,31 +406,24 @@ public class AppController {
 
         // --- Listener para el campo codProdu ---
         codProdu.textProperty().addListener((observable, oldValue, newValue) -> {
-            // Limpiar el label si el campo está vacío
             if (newValue.isEmpty()) {
                 nombreProductoPreviewLabel.setText(" ");
                 return;
             }
             try {
-                // Llama al DAO para buscar el producto por el código (String)
                 Producto productoEncontrado = productoDAO.buscarProductoPorCodigo(newValue);
 
                 if (productoEncontrado != null) {
                     nombreProductoPreviewLabel.setText(productoEncontrado.getNombre());
-                    // Opcional: auto-rellenar el campo 'produField' con el nombre del producto
-                    // produField.setText(productoEncontrado.getNombre());
                 } else {
                     nombreProductoPreviewLabel.setText("Producto no encontrado");
                 }
             } catch (SQLException e) {
                 System.err.println("Error de base de datos al buscar producto por código: " + e.getMessage());
-                nombreProductoPreviewLabel.setText("Error de DB"); // Mensaje más genérico para el usuario
-                // Puedes usar un método para mostrar un error más detallado si lo deseas:
-                // mostrarError("Error al buscar producto: " + e.getMessage());
+                nombreProductoPreviewLabel.setText("Error de DB");
             }
         });
         // -----------------------------------------------------------------
-
 
         tipoCombo.setOnAction(e -> actualizarCamposFormulario(
                 tipoCombo, accionCombo,
@@ -435,10 +467,10 @@ public class AppController {
 
         // Acción para el nuevo botón "Guardar PDF"
         botonGuardarPdf.setOnAction(e -> {
-            pdfController.handleGuardarPdfButton(); // Llama al método del controlador PDF
+            pdfController.handleGuardarPdfButton();
         });
 
-
+        // Boton princial de carga
         EjecutarController controlador = new EjecutarController(formatter, alerta, info, advertencia);
         botonEjecutar.setOnAction(e -> {
             controlador.handleBotonEjecutar(
@@ -453,11 +485,12 @@ public class AppController {
             );
         });
 
+        // Boton para buscar e imprimir
         BuscarController controladorBuscar = new BuscarController();
+        controladorBuscar.setup(buscarNombreField, tablaSugerencias, tablaCuentas, tablaProveedores, resumenClienteText);
         botonBuscar.setOnAction(e -> {
-            controladorBuscar.handleBotonBuscar(buscarNombreField, tablaCuentas, tablaProveedores, resumenClienteText, alerta);
+            controladorBuscar.handleBotonBuscar(tablaSugerencias, tablaCuentas, tablaProveedores, resumenClienteText);
         });
-
         botonImprimir.setOnAction(e -> ImprimirController.imprimirSeleccion(imprimirCombo));
 
         double anchoComun = 300;
@@ -476,7 +509,6 @@ public class AppController {
         filaCombos2.getStyleClass().add("combo-row");
         buscarNombreField.setPrefWidth(anchoComun);
         buscarNombreField.getStyleClass().add("search-field");
-        botonBuscar.setPrefWidth(anchoComun);
         botonBuscar.getStyleClass().add("search-button");
         botonGuardarPdf.getStyleClass().add("search-button");
         filaCombos2.setAlignment(Pos.CENTER_LEFT);
@@ -505,25 +537,23 @@ public class AppController {
         botonImprimir.getStyleClass().add("print-button");
         filaImprimir.setAlignment(Pos.CENTER_LEFT);
 
-        // --- Contenedor de los botones (AHORA ES UN VBox que contendrá las HBoxes de botones) ---
-        VBox botonesBox = new VBox(10); // Spacing de 10px entre las HBox internas (filas)
-        botonesBox.getStyleClass().add("buttons-container"); // Mantén esta clase para el fondo/padding del contenedor
+        // --- Contenedor de los botones  ---
+        VBox botonesBox = new VBox(10);
+        botonesBox.getStyleClass().add("buttons-container");
 
         // Añadir las filas de botones al VBox en el orden deseado
         botonesBox.getChildren().addAll(filaBotonEjecutar, filaImprimir);
-
-        // Establecer alineación para el VBox de botones
         botonesBox.setAlignment(Pos.CENTER_LEFT);
 
         // --- Campos dinámicos (cuenta corriente / normal / comprobante) ---
         StackPane camposBox = new StackPane(camposCuentaCorriente, camposNormales, camposComprobante, camposProductos, camposProveedores);
-        camposBox.setId("dynamic-fields-stack"); // Un ID ya que es un StackPane único con campos dinámicos
+        camposBox.setId("dynamic-fields-stack");
         VBox.setVgrow(camposBox, Priority.ALWAYS);
         camposBox.setMaxHeight(Double.MAX_VALUE);
 
         // --- Formulario (IZQUIERDA) ---
         VBox formulario = new VBox(combosBox, botonesBox, camposBox);
-        formulario.setId("main-form"); // ID para el formulario principal
+        formulario.setId("main-form");
         formulario.setMaxWidth(Double.MAX_VALUE);
         formulario.setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(formulario, Priority.NEVER);
@@ -531,33 +561,34 @@ public class AppController {
         HBox.setHgrow(formulario, Priority.ALWAYS);
 
         // --- Tablas (DERECHA) ---
-        // AHORA CREA UN STACKPANE PARA LAS TABLAS Y CONTROLA SU VISIBILIDAD
-        StackPane tablasStackPane = new StackPane(tablaCuentas, tablaProveedores); // Agrega ambas tablas al StackPane
-        tablasStackPane.setMaxHeight(Double.MAX_VALUE); // Permitir que el StackPane crezca todo lo posible
+        StackPane tablasStackPane = new StackPane(tablaSugerencias, tablaCuentas, tablaProveedores);
+        tablasStackPane.setMaxHeight(Double.MAX_VALUE);
         tablasStackPane.setMaxWidth(Double.MAX_VALUE);
+        StackPane.setAlignment(tablaSugerencias, Pos.TOP_LEFT);
+        VBox.setVgrow(tablaSugerencias, Priority.NEVER);
 
-        // Configura la visibilidad inicial (por defecto, muestra la tabla de clientes)
+        // Configura la visibilidad inicial
         tablaCuentas.setVisible(true);
         tablaCuentas.setManaged(true);
-        tablaProveedores.setVisible(false); // Ocultar la tabla de proveedores al inicio
+        tablaProveedores.setVisible(false);
         tablaProveedores.setManaged(false);
 
-        // Asegúrate de que las clases CSS se apliquen a ambas tablas
+        // Asegúro de que las clases CSS se apliquen a ambas tablas
         tablaCuentas.getStyleClass().add("main-table");
         tablaProveedores.getStyleClass().add("main-table");
 
         VBox tablasBox = new VBox(10, filaCombos2, tablasStackPane);
-        tablasBox.getStyleClass().add("tables-container"); // Contenedor de tablas
+        tablasBox.getStyleClass().add("tables-container");
         tablasBox.setMaxWidth(Double.MAX_VALUE);
         tablasBox.setPrefWidth(1400);
         VBox.setVgrow(tablasStackPane, Priority.ALWAYS);
         VBox.setVgrow(tablasBox, Priority.ALWAYS);
         HBox.setHgrow(tablasBox, Priority.ALWAYS);
-        resumenClienteText.getStyleClass().add("client-summary-text"); // Clase para el texto de resumen
+        resumenClienteText.getStyleClass().add("client-summary-text");
 
         // --- Contenedor HBox para ambas mitades ---
         HBox formularioConTablas = new HBox(formulario, tablasBox);
-        formularioConTablas.getStyleClass().add("main-content-area"); // Clase para el área de contenido principal
+        formularioConTablas.getStyleClass().add("main-content-area");
         formularioConTablas.setMaxHeight(Double.MAX_VALUE);
         formularioConTablas.setPrefHeight(Double.MAX_VALUE);
         HBox.setHgrow(formulario, Priority.ALWAYS);
@@ -565,7 +596,7 @@ public class AppController {
 
         // --- Layout principal ---
         BorderPane root = new BorderPane();
-        root.setId("root-pane"); // ID para el panel raíz
+        root.setId("root-pane");
         root.setCenter(formularioConTablas);
         BorderPane.setAlignment(formularioConTablas, Pos.CENTER);
 
@@ -771,6 +802,7 @@ public class AppController {
         }
     }
 
+    // Método para moverse con ENTER en los campos
     private void asignarEnterEntreCampos(List<TextField> campos) {
         for (int i = 0; i < campos.size(); i++) {
             TextField campoActual = campos.get(i);
@@ -793,6 +825,7 @@ public class AppController {
         }
     }
 
+    // Método para conversion de numeros
     public static <S, T extends Number> Callback<TableColumn<S, T>, TableCell<S, T>> getDecimalFormatCellFactory() {
         return column -> new TableCell<S, T>() {
             @Override
@@ -807,6 +840,7 @@ public class AppController {
         };
     }
 
+    // Método para conversion de numeros
     public static <S, T extends Number> Callback<TableColumn<S, T>, TableCell<S, T>> getCurrencyFormatCellFactory() {
         return column -> new TableCell<S, T>() {
             private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("es", "AR")); // Formato para Argentina

@@ -1,17 +1,14 @@
+// CASI TODOS LOS METODOS DE ESTA CLASE SE ENCARGAN SOLO DE TRAER INFORMACION Y MOSTRARLA EN UNA VENTANA NUEVA
 package controllers;
 
-import com.itextpdf.kernel.colors.ColorConstants;
-import com.itextpdf.kernel.colors.DeviceRgb;
-import com.itextpdf.kernel.geom.PageSize;
 import dao.*;
-import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.layout.Priority;
 import javafx.util.Callback;
 import model.*;
-import services.ImprimirPdfService; // Importar el nuevo servicio
+import services.ImprimirPdfService;
 
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.FXCollections;
@@ -28,7 +25,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.time.LocalDate;
 import java.util.List;
@@ -45,6 +41,7 @@ public class ImprimirController {
         }
     }
 
+    // Método para seleccionar que "Entidad" se va a imprimir
     public static void imprimirSeleccion(ComboBox<String> imprimirCombo) {
         String seleccion = imprimirCombo.getValue();
         if (seleccion == null) return;
@@ -59,6 +56,7 @@ public class ImprimirController {
         }
     }
 
+    // Método para mostrar los productos
     private static void mostrarProductos() {
         ProductoDAO productoDAO = new ProductoDAO();
         try {
@@ -79,6 +77,7 @@ public class ImprimirController {
         }
     }
 
+    // Método para mostrar los clientes deudores (saldo != 0)
     private static void mostrarClientesDeudores() {
         ClienteDAO clienteDAO = new ClienteDAO();
         try {
@@ -136,6 +135,7 @@ public class ImprimirController {
         }
     }
 
+    // Método para mostrar los clientes
     private static void mostrarClientes() {
         ClienteDAO clienteDAO = new ClienteDAO();
         try {
@@ -161,6 +161,7 @@ public class ImprimirController {
         }
     }
 
+    // Método para mostrar los proveedores
     private static void mostrarProveedores() {
         ProveedorDAO proveedorDAO = new ProveedorDAO();
         try {
@@ -186,6 +187,7 @@ public class ImprimirController {
         }
     }
 
+    // Método para la columna del saldo cliente
     private static TableColumn<Cliente, Number> crearColumnaSaldoCliente() {
         TableColumn<Cliente, Number> saldoCol = new TableColumn<>("Saldo");
         saldoCol.setCellValueFactory(data -> {
@@ -203,6 +205,7 @@ public class ImprimirController {
         return saldoCol;
     }
 
+    // Método para la columna del saldo proveedor
     private static TableColumn<Proveedor, Number> crearColumnaSaldoProveedor() {
         TableColumn<Proveedor, Number> saldoCol = new TableColumn<>("Saldo");
         saldoCol.setCellValueFactory(data -> {
@@ -220,6 +223,7 @@ public class ImprimirController {
         return saldoCol;
     }
 
+    // Método para la asignacion de texto de cada columna
     private static <T> TableColumn<T, String> crearColumnaTexto(String titulo, String propiedad) {
         TableColumn<T, String> col = new TableColumn<>(titulo);
         col.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>(propiedad));
@@ -227,6 +231,7 @@ public class ImprimirController {
         return col;
     }
 
+    // Método para la asignacion de texto de cada columna (que contiene un valor numerico)
     private static <T> TableColumn<T, Number> crearColumnaNumerica(String titulo, String propiedad) {
         TableColumn<T, Number> col = new TableColumn<>(titulo);
         col.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>(propiedad));
@@ -234,6 +239,7 @@ public class ImprimirController {
         return col;
     }
 
+    // Método para mostrar la ventana (de lo que sea)
     private static void mostrarVentana(String tituloLabel, String tituloVentana, TableView<?> tabla) {
         VBox layout = new VBox(10, new Label(tituloLabel), tabla);
         VBox.setVgrow(tabla, Priority.ALWAYS);
@@ -248,6 +254,7 @@ public class ImprimirController {
         ventana.show();
     }
 
+    // Método para mostrar los errores
     private static void mostrarError(String mensaje) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
@@ -256,6 +263,7 @@ public class ImprimirController {
         alert.showAndWait();
     }
 
+    // Método para mostrar alertas de informacion
     private static void mostrarInformacion(String titulo, String mensaje) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(titulo);
@@ -264,7 +272,9 @@ public class ImprimirController {
         alert.showAndWait();
     }
 
+    // Método para generar un PDF de los clientes deudores
     public static void generarPdfDeudores(Stage ownerStage, List<Cliente> clientesDeudores) {
+        // La parte "logica" de este metodo esta en el PDF service
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Guardar PDF de Clientes Deudores");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Archivos PDF", "*.pdf"));
@@ -293,6 +303,7 @@ public class ImprimirController {
         }
     }
 
+    // Método para que los numeros no se vean con notacion cientifica
     public static <S> Callback<TableColumn<S, Number>, TableCell<S, Number>> getCurrencyFormatCellFactory() {
         return column -> new TableCell<S, Number>() {
             @Override

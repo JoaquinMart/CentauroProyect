@@ -9,16 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CuentaCorrienteDAO {
-    private Connection connection;
 
     public CuentaCorrienteDAO() throws SQLException {
-        this.connection = ConexionMySQL.conectar();
+
     }
 
+    // Método para crear la cuenta corriente
     public void crearTransaccion(CuentaCorriente cuentaCorriente) throws SQLException {
         String query = "INSERT INTO cuenta_corriente(cliente_id, proveedor_id, fecha, tipo, comprobante, neto, iva, otros, venta, monto, saldo, observacion) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setObject(1, cuentaCorriente.getClienteId(), java.sql.Types.INTEGER);
             pstmt.setObject(2, cuentaCorriente.getProveedorId(), java.sql.Types.INTEGER);
             pstmt.setDate(3, Date.valueOf(cuentaCorriente.getFecha()));
@@ -55,11 +56,13 @@ public class CuentaCorrienteDAO {
         }
     }
 
+    // Método para obtener todas las transacciones de un cliente
     public List<CuentaCorriente> obtenerMovimientosPorClienteId(int clienteId) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
-        String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? ORDER BY fecha ASC";
+        String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? ORDER BY fecha DESC";
 
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, clienteId);
             ResultSet rs = pstmt.executeQuery();
             ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
@@ -90,10 +93,12 @@ public class CuentaCorrienteDAO {
         return movimientos;
     }
 
+    // Método para obtener todas las transacciones de un proveedor
     public List<CuentaCorriente> obtenerMovimientosPorProveedorId(int proveedorId) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
-        String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? ORDER BY fecha ASC";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? ORDER BY fecha DESC";
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, proveedorId);
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
@@ -124,12 +129,14 @@ public class CuentaCorrienteDAO {
         return movimientos;
     }
 
+    // Método para obtener una cuenta corriente por su comprobante
     public CuentaCorriente obtenerPorComprobante(String numeroRemito) throws SQLException {
         CuentaCorriente cuenta = null;
 
         String query = "SELECT * FROM cuenta_corriente WHERE comprobante = ?";
 
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, numeroRemito);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
@@ -159,11 +166,13 @@ public class CuentaCorrienteDAO {
         return cuenta;
     }
 
+    // Método para actualizar una cuenta corriente
     public void actualizarTransaccion(CuentaCorriente cuentaCorriente) throws SQLException {
         String query = "UPDATE cuenta_corriente SET cliente_id = ?, proveedor_id = ?, fecha = ?, tipo = ?, " +
                 "comprobante = ?, venta = ?, monto = ?, saldo = ?, observacion = ?, neto = ?, iva = ?, otros = ? WHERE id = ?";
 
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setObject(1, cuentaCorriente.getClienteId(), java.sql.Types.INTEGER);
             pstmt.setObject(2, cuentaCorriente.getProveedorId(), java.sql.Types.INTEGER);
             pstmt.setDate(3, Date.valueOf(cuentaCorriente.getFecha()));
@@ -187,6 +196,7 @@ public class CuentaCorrienteDAO {
         }
     }
 
+    // Método para obtener una cuenta corriente puntual
     public CuentaCorriente obtenerTransaccionEspecifica(Integer clienteId, Integer proveedorId, LocalDate fecha, String comprobante) throws SQLException {
         CuentaCorriente cuenta = null;
         String query;
@@ -194,16 +204,14 @@ public class CuentaCorrienteDAO {
         if (clienteId == null && proveedorId == null) {
             return null;
         }
-
-        // Determinar la consulta basada en si es un cliente o un proveedor
         if (clienteId != null) {
             query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? AND fecha = ? AND comprobante = ?";
-        } else { // proveedorId != null
+        } else {
             query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND fecha = ? AND comprobante = ?";
         }
 
-        // Usar try-with-resources para asegurar que PreparedStatement y ResultSet se cierren automáticamente
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             if (clienteId != null) {
                 pstmt.setInt(1, clienteId);
             } else {
@@ -242,9 +250,11 @@ public class CuentaCorrienteDAO {
         return cuenta;
     }
 
+    // Método para eliminar una cuenta corriente
     public boolean eliminarTransaccionPorId(int idTransaccion) throws SQLException {
         String query = "DELETE FROM cuenta_corriente WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, idTransaccion);
             int filasAfectadas = pstmt.executeUpdate();
             if (filasAfectadas > 0) {
@@ -257,11 +267,13 @@ public class CuentaCorrienteDAO {
         }
     }
 
+    // Método para obtener todas las transacciones ordenadas por fecha de Clientes
     public List<CuentaCorriente> obtenerTodasLasTransaccionesOrdenadasPorFechaCliente(int clienteId) throws SQLException {
         List<CuentaCorriente> lista = new ArrayList<>();
         String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? ORDER BY fecha ASC";
 
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, clienteId);
             ResultSet rs = pstmt.executeQuery();
             ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
@@ -292,11 +304,13 @@ public class CuentaCorrienteDAO {
         return lista;
     }
 
+    // Método para obtener todas las transacciones ordenadas por fecha de Proveedores
     public List<CuentaCorriente> obtenerTodasLasTransaccionesOrdenadasPorFechaProveedor(int proveedorId) throws SQLException {
         List<CuentaCorriente> lista = new ArrayList<>();
         String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? ORDER BY fecha ASC";
 
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, proveedorId);
             ResultSet rs = pstmt.executeQuery();
             ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
@@ -327,10 +341,12 @@ public class CuentaCorrienteDAO {
         return lista;
     }
 
+    // Método para obtener todas las transacciones ordenadas por fecha de los Clientes
     public List<CuentaCorriente> obtenerMovimientosPorClienteYFechas(int clienteId, LocalDate fechaInicio, LocalDate fechaFin) throws SQLException { // ¡ÚNICO CAMBIO: Agregado throws SQLException!
         List<CuentaCorriente> movimientos = new ArrayList<>();
-        String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? AND fecha BETWEEN ? AND ? ORDER BY fecha ASC";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        String query = "SELECT * FROM cuenta_corriente WHERE cliente_id = ? AND fecha BETWEEN ? AND ? ORDER BY fecha DESC";
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, clienteId);
             pstmt.setDate(2, java.sql.Date.valueOf(fechaInicio));
             pstmt.setDate(3, java.sql.Date.valueOf(fechaFin));
@@ -363,17 +379,18 @@ public class CuentaCorrienteDAO {
         return movimientos;
     }
 
+    // Método para obtener todas las transacciones ordenadas por fecha de Proveedores y Tipo
     public List<CuentaCorriente> obtenerMovimientosPorProveedorYTipoYFechas(int idProveedor, String tipoMovimiento, LocalDate fechaInicio, LocalDate fechaFin) throws SQLException {
         List<CuentaCorriente> movimientos = new ArrayList<>();
-        // Query para filtrar por id_proveedor, tipo y rango de fechas
-        String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND LOWER(tipo) = LOWER(?) AND fecha BETWEEN ? AND ? ORDER BY fecha ASC";
-        ComprobanteDAO comprobanteDAO = new ComprobanteDAO(); // Instancia para cargar comprobantes asociados
+        String query = "SELECT * FROM cuenta_corriente WHERE proveedor_id = ? AND LOWER(tipo) = LOWER(?) AND fecha BETWEEN ? AND ? ORDER BY fecha DESC";
+        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
 
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, idProveedor);
             pstmt.setString(2, tipoMovimiento);
-            pstmt.setDate(3, java.sql.Date.valueOf(fechaInicio)); // Convierte LocalDate a java.sql.Date
-            pstmt.setDate(4, java.sql.Date.valueOf(fechaFin));     // Convierte LocalDate a java.sql.Date
+            pstmt.setDate(3, java.sql.Date.valueOf(fechaInicio));
+            pstmt.setDate(4, java.sql.Date.valueOf(fechaFin));
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
@@ -391,10 +408,7 @@ public class CuentaCorrienteDAO {
 
                     CuentaCorriente cuenta = new CuentaCorriente(id, fecha, tipo, comprobante, venta, monto, saldo,
                             observacion, neto, iva, otros);
-                    // Asegúrate de establecer el ID del proveedor, ya que es relevante para este método
                     cuenta.setProveedorId(idProveedor);
-
-                    // Cargar comprobantes asociados (si tu lógica lo requiere)
                     List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesPorCuentaCorrienteId(id);
                     cuenta.setComprobantes(comprobantes);
 

@@ -9,7 +9,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.sql.Statement;
 
 public class ClienteDAO {
@@ -182,12 +181,40 @@ public class ClienteDAO {
 
     // Método para obtener todas las cuentas de un cliente
     public List<Cliente> obtenerClientesConCuentas() throws SQLException {
-        List<Cliente> clientes = obtenerTodosLosClientes(); // Usamos tu método ya hecho
+        List<Cliente> clientes = obtenerTodosLosClientes();
+        // Aprovecho el metodo que ya tengo creado.
         for (Cliente cliente : clientes) {
-            // Supone que ya existe este método en tu DAO
             List<CuentaCorriente> cuentas = obtenerMovimientosPorClienteId(cliente.getId());
-            // Asumiendo que tu clase Cliente tiene este método
             cliente.setCuentaCorrientes(cuentas);
+        }
+        return clientes;
+    }
+
+    // Método para obtener clientes por nombre de forma parcial
+    public List<Cliente> obtenerClientesPorNombreParcial(String nombre) throws SQLException {
+        List<Cliente> clientes = new ArrayList<>();
+        String sql = "SELECT * FROM clientes WHERE nombre LIKE ?";
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, "%" + nombre + "%");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Cliente cliente = new Cliente(
+                            rs.getString("nombre"),
+                            rs.getString("razonSocial"),
+                            rs.getString("domicilio"),
+                            rs.getString("localidad"),
+                            rs.getString("codigoPostal"),
+                            rs.getString("telefono"),
+                            rs.getString("CUIT"),
+                            rs.getString("condicion"),
+                            rs.getDate("fechaAlta").toLocalDate(),
+                            rs.getString("proveedor")
+                    );
+                    cliente.setId(rs.getInt("id"));
+                    clientes.add(cliente);
+                }
+            }
         }
         return clientes;
     }

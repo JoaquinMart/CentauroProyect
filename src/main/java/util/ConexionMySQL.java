@@ -1,32 +1,46 @@
 package util;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import io.github.cdimascio.dotenv.Dotenv;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import io.github.cdimascio.dotenv.Dotenv;
 
 public class ConexionMySQL {
 
     private static final Dotenv dotenv = Dotenv.load();
-
     private static final String URL = dotenv.get("DB_URL");
     private static final String USUARIO = dotenv.get("DB_USER");
     private static final String CLAVE = dotenv.get("DB_PASSWORD");
 
-    public static Connection conectar() {
-        Connection conn = null;
-        try {
-            conn = DriverManager.getConnection(URL, USUARIO, CLAVE);
-            System.out.println("Conexión exitosa a MySQL.");
-            crearTablas(conn);
-        } catch (SQLException e) {
-            System.out.println("Error de conexión: " + e.getMessage());
-        }
-        return conn;
+    private static HikariDataSource dataSource;
+    static {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(URL);
+        config.setUsername(USUARIO);
+        config.setPassword(CLAVE);
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+
+        dataSource = new HikariDataSource(config);
     }
 
-    private static void crearTablas(Connection conn) {
+    // Este método ahora es mucho más rápido porque no crea la conexión, solo la pide del pool
+    public static Connection conectar() throws SQLException {
+        return dataSource.getConnection();
+    }
+
+    // Método para cerrar el pool de conexiones cuando la aplicación termine
+    public static void cerrarDataSource() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+        }
+    }
+
+    // Método para crear las tablas de la base de datos si no existen
+    public static void crearTablas(Connection conn) {
         String sqlClientes = """
             CREATE TABLE IF NOT EXISTS clientes (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -113,7 +127,11 @@ public class ConexionMySQL {
     }
 
     public static void main(String[] args) {
-        conectar();
+        try {
+            conectar();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
 

@@ -18,6 +18,8 @@ import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.colors.ColorConstants;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -36,6 +38,7 @@ public class PdfReportService {
         this.proveedorDAO = proveedorDAO;
     }
 
+    // Método que genera el reporte de las cuentas corrientes de un cliente.
     public void generateCuentaCorrientePdf(List<CuentaCorriente> movimientos, Cliente cliente, LocalDate fechaInicio, LocalDate fechaFin, String outputPath) throws IOException {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -130,6 +133,7 @@ public class PdfReportService {
         document.close();
     }
 
+    // Método que genera el reporte de todas las facturas de todos los proveedores.
     public void generateProveedoresFacturasPdf(String outputPath, LocalDate fechaInicio, LocalDate fechaFin) throws IOException, SQLException {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         PdfWriter writer = new PdfWriter(outputPath);
@@ -237,6 +241,55 @@ public class PdfReportService {
                 .setTextAlignment(TextAlignment.RIGHT)
                 .setMarginTop(20));
 
+        document.close();
+    }
+
+    // Método que genera el reporte de todos los remitos del tipo seleccionado, de todos los proveedores en un periodo.
+    public void generateProveedorReportPdf(String outputPath, LocalDate fechaInicio, LocalDate fechaFin, String nombre) throws IOException, SQLException {
+        ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
+        List<Comprobante> comprobantes = comprobanteDAO.obtenerComprobantesDeProveedoresPorFechasYOrdenados(fechaInicio, fechaFin, nombre);
+
+        PdfWriter writer = new PdfWriter(outputPath);
+        PdfDocument pdf = new PdfDocument(writer);
+        Document document = new Document(pdf, PageSize.A4.rotate());
+
+        // Lógica de iText 7 para generar el PDF.
+        PdfFont fontNormal = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+        PdfFont fontBold = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+
+        document.setMargins(20, 20, 20, 20);
+
+        document.add(new Paragraph("Reporte de Comprobantes de Proveedores")
+                .setFont(fontBold)
+                .setFontSize(18)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(10));
+
+        document.add(new Paragraph("Período: " + fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " - " + fechaFin.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                .setFont(fontNormal)
+                .setFontSize(9)
+                .setMarginBottom(15));
+
+        Table table = new Table(UnitValue.createPercentArray(new float[]{3f, 1f, 2f}));
+        table.setWidth(UnitValue.createPercentValue(100));
+        table.setMarginBottom(10);
+
+        String[] headers = {"Nombre", "Cantidad", "Precio Unitario"};
+        for (String header : headers) {
+            table.addHeaderCell(new Cell().add(new Paragraph(header)
+                            .setFont(fontBold)
+                            .setFontSize(10)
+                            .setFontColor(ColorConstants.WHITE))
+                    .setBackgroundColor(new DeviceRgb(52, 152, 219))
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setPadding(5));
+        }
+        for (Comprobante comprobante : comprobantes) {
+            table.addCell(new Cell().add(new Paragraph(comprobante.getNombre())));
+            table.addCell(new Cell().add(new Paragraph(String.valueOf(comprobante.getCantidad()))));
+            table.addCell(new Cell().add(new Paragraph(String.format("%.2f", comprobante.getPrecio()))));
+        }
+        document.add(table);
         document.close();
     }
 }

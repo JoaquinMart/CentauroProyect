@@ -68,7 +68,7 @@ public class ProveedorDAO {
                         rs.getString("categoria"),
                         rs.getString("contacto")
                 );
-                proveedor.setId(rs.getInt("id")); // <-- esta línea es importante
+                proveedor.setId(rs.getInt("id"));
                 return proveedor;
             }
         }
@@ -174,11 +174,39 @@ public class ProveedorDAO {
 
     // Método proveedores con sus cuentas
     public List<Proveedor> obtenerProveedoresConCuentas() throws SQLException {
-        List<Proveedor> proveedores = obtenerTodosLosProveedores(); // Ya lo tenés hecho
+        List<Proveedor> proveedores = obtenerTodosLosProveedores();
         for (Proveedor proveedor : proveedores) {
             List<CuentaCorriente> cuentas = obtenerMovimientosPorProveedorId(proveedor.getId());
             for (CuentaCorriente cuenta : cuentas) {
                 proveedor.agregarCuentaCorriente(cuenta);
+            }
+        }
+        return proveedores;
+    }
+
+    // Nuevo método para obtener proveedores por nombre de forma parcial
+    public List<Proveedor> obtenerProveedoresPorNombreParcial(String nombre) throws SQLException {
+        List<Proveedor> proveedores = new ArrayList<>();
+        String sql = "SELECT * FROM proveedores WHERE nombre LIKE ?";
+        try (Connection conn = ConexionMySQL.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, "%" + nombre + "%");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Proveedor proveedor = new Proveedor(
+                            rs.getString("nombre"),
+                            rs.getString("razonSocial"),
+                            rs.getString("domicilio"),
+                            rs.getString("localidad"),
+                            rs.getString("codigoPostal"),
+                            rs.getString("telefono"),
+                            rs.getString("CUIT"),
+                            rs.getString("categoria"),
+                            rs.getString("contacto")
+                    );
+                    proveedor.setId(rs.getInt("id"));
+                    proveedores.add(proveedor);
+                }
             }
         }
         return proveedores;

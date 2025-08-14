@@ -1,3 +1,4 @@
+// CONSTRUCTOR, FREEZER Y COMODATO SE PUEDEN ELIMINAR
 package model;
 
 import java.time.LocalDate;

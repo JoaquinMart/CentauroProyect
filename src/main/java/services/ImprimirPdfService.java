@@ -33,6 +33,7 @@ public class ImprimirPdfService {
         FONT_BOLD = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
     }
 
+    // Metodo para generar un PDF con la lista de clientes deudores
     public void generateClientesDeudoresPdf(List<Cliente> clientesDeudores, String outputPath) throws IOException {
         PdfWriter writer = new PdfWriter(outputPath);
         PdfDocument pdf = new PdfDocument(writer);

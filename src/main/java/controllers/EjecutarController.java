@@ -1,3 +1,4 @@
+// TODO LO QUE TENGA (M) SON COSAS A MODIFICAR
 package controllers;
 
 import javafx.geometry.Insets;
@@ -88,6 +89,7 @@ public class EjecutarController {
         try {
             if (accion.equals("Alta")) {
                 if (tipo.equals("Cliente")) {
+                    // Se podria simplificar sacando del if los campos que comparten (M)
                     String nombre = getText(nombreField);
                     String razonSocial = getText(razonField);
                     String domicilio = getText(domicilioField);
@@ -100,6 +102,7 @@ public class EjecutarController {
                     LocalDate fechaAlta = LocalDate.parse(fechaTexto, formatter);
                     String proveedor = getText(proveedorField);
 
+                    // TODOS LOS !verificarCampos, JUSTAMENTE CONTORLAN QUE CAMPOS SI SON OBLIGATORIOS
                     if (!verificarCampos(
                             new String[]{nombre},
                             new String[]{"Nombre"}
@@ -113,6 +116,7 @@ public class EjecutarController {
                     info.showAndWait();
 
                 } else if (tipo.equals("Proveedor")) {
+                    // Lo mismo que el cliente (M)
                     String nombre = getText(nombreField);
                     String razonSocial = getText(razonField);
                     String domicilio = getText(domicilioField);
@@ -128,6 +132,7 @@ public class EjecutarController {
                             new String[]{"Nombre"}
                     )) return;
 
+                    // Creo al proveedor
                     Proveedor p = new Proveedor(nombre, razonSocial, domicilio, localidad, codigoPostal,
                             telefono, CUIT, categoria, contacto);
                     new ProveedorDAO().crearProveedor(p);
@@ -157,6 +162,7 @@ public class EjecutarController {
                     )) return;
 
                     try {
+                        // Valores que pueden ser 0
                         double neto = netoCC.isEmpty() ? 0.0 : Double.parseDouble(netoCC);
                         double iva = ivaCC.isEmpty() ? 0.0 : Double.parseDouble(ivaCC);
                         double otros = otrosCC.isEmpty() ? 0.0 : Double.parseDouble(otrosCC);
@@ -171,6 +177,7 @@ public class EjecutarController {
 
                         CuentaCorrienteDAO ccDAO = new CuentaCorrienteDAO();
 
+                        // Creo un cliente para ver si existe, de ser asi le agrego la cuenta corriente
                         ClienteDAO clienteDAO = new ClienteDAO();
                         Cliente cliente = clienteDAO.obtenerClientePorNombre(nombrePersona);
 
@@ -180,15 +187,18 @@ public class EjecutarController {
                             valorIva = 0.0;
                             valorOtros = 0.0;
 
+                            // Creo la CC a agregar al cliente
                             CuentaCorriente cc = new CuentaCorriente(fechaLocalDate, tipoCC, comprobante, valorVenta, monto, 0,
                                     desc, valorNeto, valorIva, valorOtros);
 
+                            // Le seteo el id del cliente, y no del proveedor para una mejor relacion
                             cc.setClienteId(cliente.getId());
                             cc.setProveedorId(null);
 
                             cc.setSaldo(0);
                             ccDAO.crearTransaccion(cc);
 
+                            // Automaticamente se actualiza el saldo de la CC con el de las anteriores del cliente
                             List<CuentaCorriente> todas = ccDAO.obtenerTodasLasTransaccionesOrdenadasPorFechaCliente(cliente.getId());
                             double saldoAcumulado = 0;
                             for (CuentaCorriente c : todas) {
@@ -202,41 +212,37 @@ public class EjecutarController {
                             info.setTitle("Éxito");
                             info.setContentText("Cuenta Corriente agregada al Cliente: " + cliente.getNombre());
                             info.showAndWait();
+
+                            // Esto es auxiliar, ya que es para que se acutalice la tabla con los nuevos cambios
                             BuscarController buscador = new BuscarController();
                             buscador.mostrarCuentasYResumen(nombrePersona, tablaCuentas, tablaProveedores, resumenClienteText);
 
-                            // --- INICIO DE CAMBIOS PARA LIMPIAR CAMPOS (CLIENTE) ---
-                            fechaField.clear(); // Limpiar DatePicker
-                            comprobanteField.clear(); // Limpiar TextField
-                            tipoField.clear();        // Limpiar TextField
-                            netoField.clear();        // Limpiar TextField
-                            ivaField.clear();         // Limpiar TextField
-                            otrosField.clear();       // Limpiar TextField
-                            montoField.clear();       // Limpiar TextField
-                            observacionField.clear(); // Limpiar TextField
-                            // --- FIN DE CAMBIOS PARA LIMPIAR CAMPOS (CLIENTE) ---
-
+                            // Limpio los campos que no sirven
+                            fechaField.clear();
+                            comprobanteField.clear();
+                            tipoField.clear();
+                            netoField.clear();
+                            ivaField.clear();
+                            otrosField.clear();
+                            montoField.clear();
+                            observacionField.clear();
                             return;
                         }
 
+                        // Dado el caso de que no se haya encontrado el cliente, todo es igual pero con el proveedor
                         ProveedorDAO proveedorDAO = new ProveedorDAO();
                         Proveedor proveedor = proveedorDAO.obtenerProveedorPorNombre(nombrePersona);
-
                         if (proveedor != null) {
                             valorVenta = neto + iva + otros;
                             valorNeto = neto;
                             valorIva = iva;
                             valorOtros = otros;
-
                             CuentaCorriente cc = new CuentaCorriente(fechaLocalDate, tipoCC, comprobante, valorVenta, monto, 0,
                                     desc, valorNeto, valorIva, valorOtros);
-
                             cc.setProveedorId(proveedor.getId());
                             cc.setClienteId(null);
-
                             cc.setSaldo(0);
                             ccDAO.crearTransaccion(cc);
-
                             List<CuentaCorriente> todas = ccDAO.obtenerTodasLasTransaccionesOrdenadasPorFechaProveedor(proveedor.getId());
                             double saldoAcumulado = 0;
                             for (CuentaCorriente c : todas) {
@@ -246,26 +252,23 @@ public class EjecutarController {
                             }
 
                             proveedorDAO.actualizarProveedor(proveedor);
-
                             info.setTitle("Éxito");
                             info.setContentText("Cuenta Corriente agregada al Proveedor: " + proveedor.getNombre());
                             info.showAndWait();
+                            BuscarController buscador = new BuscarController();
+                            buscador.mostrarCuentasYResumen(nombrePersona, tablaCuentas, tablaProveedores, resumenClienteText);
 
-                            // --- INICIO DE CAMBIOS PARA LIMPIAR CAMPOS (PROVEEDOR) ---
-                            fechaField.clear(); // Limpiar DatePicker
-                            comprobanteField.clear(); // Limpiar TextField
-                            tipoField.clear();        // Limpiar TextField
-                            netoField.clear();        // Limpiar TextField
-                            ivaField.clear();         // Limpiar TextField
-                            otrosField.clear();       // Limpiar TextField
-                            montoField.clear();       // Limpiar TextField
-                            observacionField.clear(); // Limpiar TextField
-                            // --- FIN DE CAMBIOS PARA LIMPIAR CAMPOS (PROVEEDOR) ---
-
+                            fechaField.clear();
+                            comprobanteField.clear();
+                            tipoField.clear();
+                            netoField.clear();
+                            ivaField.clear();
+                            otrosField.clear();
+                            montoField.clear();
+                            observacionField.clear();
                             return;
                         }
 
-                        // Si no se encontró ninguno
                         alerta.setTitle("Error");
                         alerta.setContentText("No se encontró a nadie con el nombre: " + nombrePersona);
                         alerta.showAndWait();
@@ -319,6 +322,7 @@ public class EjecutarController {
                         comprobanteDAO.crearComprobante(comprobante, cc.getId());
                         cc.addComprobante(comprobante);
 
+                        // Mostrar comprovantes
                         mostrarVentanaComprobantes(cc.getId(), cc.getFecha().format(formatter), numeroRemitoStr);
 
                         info.setTitle("Éxito");
@@ -389,6 +393,7 @@ public class EjecutarController {
                             new String[]{"Codigo"}
                     )) return;
 
+                    // Creo el propducto, lo agrego y limpio los campos
                     Producto p = new Producto(codigo, nombre, precioUnitario);
                     this.productoDAO.crearProducto(p);
                     info.setTitle("Éxito");
@@ -399,7 +404,6 @@ public class EjecutarController {
                     }
                 }
             } else if (accion.equals("Baja")) {
-
                 if (tipo.equals("Cliente")) {
                     String nameDelete = nombreField.getText().trim();
 
@@ -410,6 +414,7 @@ public class EjecutarController {
                         return;
                     }
 
+                    // Si se encontro el cliente, confirmo le eliminacion
                     advertencia.setTitle("Advertencia");
                     advertencia.setContentText("Estás a punto de eliminar al cliente " + nameDelete + ". ¿Confirmas?");
                     Optional<ButtonType> result = advertencia.showAndWait();
@@ -435,6 +440,7 @@ public class EjecutarController {
                         return;
                     }
 
+                    // Lo mismo que con el cliente
                     advertencia.setTitle("Advertencia");
                     advertencia.setContentText("Estás a punto de eliminar al proveedor " + nameDelete + ". ¿Confirmas?");
                     Optional<ButtonType> result = advertencia.showAndWait();
@@ -512,11 +518,11 @@ public class EjecutarController {
                         Optional<ButtonType> result = advertencia.showAndWait();
 
                         if (result.isPresent() && result.get() == ButtonType.OK) {
-                            // **Paso 1: Eliminar la transacción de la base de datos**
+                            // Elimino la transacción de la base de datos
                             boolean eliminada = cuentaCorrienteDAO.eliminarTransaccionPorId(transaccionAEliminar.getId());
 
                             if (eliminada) {
-                                // **Paso 2: Recalcular saldos si la eliminación fue exitosa**
+                                // Recalculo saldos si la eliminación fue exitosa
                                 List<CuentaCorriente> todas;
                                 if (tipoEntidadEncontrada.equals("Cliente")) {
                                     todas = cuentaCorrienteDAO.obtenerTodasLasTransaccionesOrdenadasPorFechaCliente(entidadId);
@@ -524,22 +530,24 @@ public class EjecutarController {
                                     todas = cuentaCorrienteDAO.obtenerTodasLasTransaccionesOrdenadasPorFechaProveedor(entidadId);
                                 }
 
+                                // Vuelvo a calcular el saldo de las cuentas
                                 double saldoAcumulado = 0;
                                 for (CuentaCorriente c : todas) {
                                     saldoAcumulado += c.getVenta() - c.getMonto();
                                     c.setSaldo(saldoAcumulado);
-                                    cuentaCorrienteDAO.actualizarTransaccion(c); // Asegúrate de que este método exista y funcione
+                                    cuentaCorrienteDAO.actualizarTransaccion(c);
                                 }
 
                                 info.setTitle("Éxito");
                                 info.setContentText("Transacción de Cuenta Corriente (Comprobante: " + transaccionAEliminar.getComprobante() + ") eliminada permanentemente y saldos recalculados.");
                                 info.showAndWait();
-                                // Opcional: limpiar los campos de entrada o actualizar la vista si es necesario
+
+                                //Limpiar los campos de entrada
                                 nombreCuentaField.clear();
                                 fechaField.clear();
                                 comprobanteField.clear();
 
-                                // Si tienes un método para actualizar la vista de las tablas y resumen
+                                // Vuelvo a mostrar la tabla modificada
                                 BuscarController buscador = new BuscarController();
                                 buscador.mostrarCuentasYResumen(nombreEntidad, tablaCuentas, tablaProveedores, resumenClienteText); // Pasa tus tablas y textflow
                             } else {
@@ -565,7 +573,7 @@ public class EjecutarController {
                         alerta.showAndWait();
                     }
                 } else if (tipo.equals("Producto")) {
-                    String codigoProducto = codigoField.getText().trim(); // Usar codigoField
+                    String codigoProducto = codigoField.getText().trim();
 
                     if (codigoProducto.isEmpty()) {
                         alerta.setTitle("Error");
@@ -578,6 +586,7 @@ public class EjecutarController {
                     advertencia.setContentText("Estás a punto de eliminar el producto con código " + codigoProducto + ". ¿Confirmas?");
                     Optional<ButtonType> result = advertencia.showAndWait();
 
+                    // Todas las eliminaciones hacen lo mismo, piden confirmacion para una eliminacion
                     if (result.isPresent() && result.get() == ButtonType.OK) {
                         new ProductoDAO().eliminarProducto(codigoProducto);
                         info.setTitle("Éxito");
@@ -608,6 +617,7 @@ public class EjecutarController {
                             CuentaCorrienteDAO ccDAO = new CuentaCorrienteDAO();
                             CuentaCorriente cuentaCorrienteAEliminar = ccDAO.obtenerPorComprobante(numeroRemito);
 
+                            // Antes de eliminar, busco que ese remito pertenezca a una cuenta corriente
                             if (cuentaCorrienteAEliminar != null) {
                                 int idCuentaCorriente = cuentaCorrienteAEliminar.getId();
                                 ComprobanteDAO comprobanteDAO = new ComprobanteDAO();
@@ -659,51 +669,31 @@ public class EjecutarController {
                         alerta.setContentText("No se encontró el cliente " + nombreClienteProveedorABuscar);
                         alerta.showAndWait();
                     } else {
+
                         // Confirmación antes de modificar
                         advertencia.setTitle("Confirmar Modificación");
                         advertencia.setContentText("Estás a punto de modificar el cliente: " + existente.getNombre() + ". ¿Confirmas?");
                         Optional<ButtonType> result = advertencia.showAndWait();
 
                         if (result.isPresent() && result.get() == ButtonType.OK) {
+                            // Todos los campos verifican que se modifique todo lo vacio
+                            // Tambien se puede modificar (M) automatizar la verificacion, y simplificar con el proveedor
                             String nuevoNombre = getText(nombreField);
-                            if (!nuevoNombre.isEmpty()) {
-                                existente.setNombre(nuevoNombre);
-                            }
-
+                            if (!nuevoNombre.isEmpty()) existente.setNombre(nuevoNombre);
                             String razonSocial = getText(razonField);
-                            if (!razonSocial.isEmpty()) {
-                                existente.setRazonSocial(razonSocial);
-                            }
-
+                            if (!razonSocial.isEmpty()) existente.setRazonSocial(razonSocial);
                             String domicilio = getText(domicilioField);
-                            if (!domicilio.isEmpty()) {
-                                existente.setDomicilio(domicilio);
-                            }
-
+                            if (!domicilio.isEmpty()) existente.setDomicilio(domicilio);
                             String localidad = getText(localidadField);
-                            if (!localidad.isEmpty()) {
-                                existente.setLocalidad(localidad);
-                            }
-
+                            if (!localidad.isEmpty()) existente.setLocalidad(localidad);
                             String codigoPostal = getText(codigoPostalField);
-                            if (!codigoPostal.isEmpty()) {
-                                existente.setCodigoPostal(codigoPostal);
-                            }
-
+                            if (!codigoPostal.isEmpty()) existente.setCodigoPostal(codigoPostal);
                             String telefono = getText(telefonoField);
-                            if (!telefono.isEmpty()) {
-                                existente.setTelefono(telefono);
-                            }
-
+                            if (!telefono.isEmpty()) existente.setTelefono(telefono);
                             String cuit = getText(cuitField);
-                            if (!cuit.isEmpty()) {
-                                existente.setCUIT(cuit);
-                            }
-
+                            if (!cuit.isEmpty()) existente.setCUIT(cuit);
                             String condicion = getText(condicionField);
-                            if (!condicion.isEmpty()) {
-                                existente.setCondicion(condicion);
-                            }
+                            if (!condicion.isEmpty()) existente.setCondicion(condicion);
 
                             String fechaTexto = getText(altaField);
                             if (!fechaTexto.isEmpty()) {
@@ -719,9 +709,7 @@ public class EjecutarController {
                             }
 
                             String proveedor = getText(proveedorField);
-                            if (!proveedor.isEmpty()) {
-                                existente.setProveedor(proveedor);
-                            }
+                            if (!proveedor.isEmpty()) existente.setProveedor(proveedor);
 
                             dao.actualizarCliente(existente);
                             info.setTitle("Éxito");
@@ -735,6 +723,7 @@ public class EjecutarController {
                     }
 
                 } else if (tipo.equals("Proveedor")) {
+                    // MISMAS ACLARACIONES QUE EL CLIENTE
                     String nombreClienteProveedorABuscar = getText(nombreField);
 
                     if (nombreClienteProveedorABuscar.isEmpty()) {
@@ -751,51 +740,30 @@ public class EjecutarController {
                         alerta.setContentText("No se encontró el proveedor " + nombreClienteProveedorABuscar);
                         alerta.showAndWait();
                     } else {
-                        // Confirmación antes de modificar
+
                         advertencia.setTitle("Confirmar Modificación");
                         advertencia.setContentText("Estás a punto de modificar el proveedor: " + existente.getNombre() + ". ¿Confirmas?");
                         Optional<ButtonType> result = advertencia.showAndWait();
 
                         if (result.isPresent() && result.get() == ButtonType.OK) {
-                            // Aplicar modificaciones solo si el campo no está vacío
                             String nuevoNombre = getText(nombreField);
-                            if (!nuevoNombre.isEmpty()) {
-                                existente.setNombre(nuevoNombre);
-                            }
-
+                            if (!nuevoNombre.isEmpty()) existente.setNombre(nuevoNombre);
                             String razonSocial = getText(razonField);
-                            if (!razonSocial.isEmpty()) {
-                                existente.setRazonSocial(razonSocial);
-                            }
-
+                            if (!razonSocial.isEmpty()) existente.setRazonSocial(razonSocial);
                             String domicilio = getText(domicilioField);
-                            if (!domicilio.isEmpty()) {
-                                existente.setDomicilio(domicilio);
-                            }
-
+                            if (!domicilio.isEmpty()) existente.setDomicilio(domicilio);
                             String localidad = getText(localidadField);
-                            if (!localidad.isEmpty()) {
-                                existente.setLocalidad(localidad);
-                            }
-
+                            if (!localidad.isEmpty()) existente.setLocalidad(localidad);
                             String codigoPostal = getText(codigoPostalField);
-                            if (!codigoPostal.isEmpty()) {
-                                existente.setCodigoPostal(codigoPostal);
-                            }
-
+                            if (!codigoPostal.isEmpty()) existente.setCodigoPostal(codigoPostal);
                             String telefono = getText(telefonoField);
-                            if (!telefono.isEmpty()) {
-                                existente.setTelefono(telefono);
-                            }
-
+                            if (!telefono.isEmpty()) existente.setTelefono(telefono);
                             String cuit = getText(cuitField);
-                            if (!cuit.isEmpty()) { existente.setCUIT(cuit); }
-
+                            if (!cuit.isEmpty()) existente.setCUIT(cuit);
                             String categoria = getText(categoriaField);
-                            if (!categoria.isEmpty()) { existente.setCategoria(categoria); }
-
+                            if (!categoria.isEmpty()) existente.setCategoria(categoria);
                             String contacto = getText(contactoField);
-                            if (!contacto.isEmpty()) { existente.setContacto(contacto); }
+                            if (!contacto.isEmpty()) existente.setContacto(contacto);
 
                             dao.actualizarProveedor(existente);
                             info.setTitle("Éxito");
@@ -808,6 +776,7 @@ public class EjecutarController {
                         }
                     }
                 } else if (tipo.equals("Producto")) {
+                    // En todos los campos de verificacion para modificar, se podria reemplazar con un metodo (M)
                     String codigoProductoABuscar = getText(codigoField).trim();
                     ProductoDAO dao = new ProductoDAO();
                     Producto existente = dao.buscarProductoPorCodigo(codigoProductoABuscar);
@@ -817,21 +786,15 @@ public class EjecutarController {
                         alerta.setContentText("No se encontró el producto con código " + codigoProductoABuscar);
                         alerta.showAndWait();
                     } else {
-                        // Confirmación antes de modificar
                         advertencia.setTitle("Confirmar Modificación");
                         advertencia.setContentText("Estás a punto de modificar el producto: " + existente.getNombre() + " (Código: " + existente.getCodigo() + "). ¿Confirmas?");
                         Optional<ButtonType> result = advertencia.showAndWait();
 
                         if (result.isPresent() && result.get() == ButtonType.OK) {
                             String nuevoCodigo = getText(codigoField).trim();
-                            if (!nuevoCodigo.isEmpty() && !nuevoCodigo.equals(existente.getCodigo())) {
-                                existente.setCodigo(nuevoCodigo);
-                            }
-
+                            if (!nuevoCodigo.isEmpty() && !nuevoCodigo.equals(existente.getCodigo())) existente.setCodigo(nuevoCodigo);
                             String nuevoNombre = getText(nomProduField).trim();
-                            if (!nuevoNombre.isEmpty()) {
-                                existente.setNombre(nuevoNombre);
-                            }
+                            if (!nuevoNombre.isEmpty()) existente.setNombre(nuevoNombre);
 
                             String precioStr = getText(preioUnitarioField).trim();
                             if (!precioStr.isEmpty()) {
@@ -851,7 +814,7 @@ public class EjecutarController {
                             info.setContentText("Producto '" + existente.getNombre() + "' actualizado exitosamente.");
                             info.showAndWait();
 
-                            // Opcional: Limpiar los campos después de la modificación exitosa
+                            // Limpiar los campos después de la modificación exitosa
                             codigoField.clear();
                             nomProduField.clear();
                             preioUnitarioField.clear();
@@ -884,6 +847,7 @@ public class EjecutarController {
         }
     }
 
+    // Método para el manejo de errores
     private void mostrarError(String mensaje) {
         Alert alerta = new Alert(Alert.AlertType.ERROR);
         alerta.setTitle("Error");
@@ -908,6 +872,7 @@ public class EjecutarController {
         return true;
     }
 
+    // Método que muestra los comprobantes de los clientes
     private void mostrarVentanaComprobantes(int movimientoId, String fecha, String persona) {
         ComprobanteDAO comprobanteDAO = null;
         List<Comprobante> comprobantes = null;
@@ -968,9 +933,10 @@ public class EjecutarController {
         }
     }
 
+    // Método que muestra los comprobantes de los proveedores
     private void mostrarVentanaComprobantesProveedores(int movimientoId, String fecha, String persona) {
-        ComprobanteDAO comprobanteDAO = null; // Inicializar a null
-        List<Comprobante> comprobantes = null; // Inicializar a null
+        ComprobanteDAO comprobanteDAO = null;
+        List<Comprobante> comprobantes = null;
 
         try {
             // Estas dos líneas pueden lanzar SQLException

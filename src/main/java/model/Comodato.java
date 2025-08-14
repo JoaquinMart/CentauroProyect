@@ -1,3 +1,4 @@
+// CLASE ENTERA NO SE USA
 package model;
 
 public class Comodato {

@@ -63,12 +63,10 @@ public class CuentaCorriente {
     public double getMonto() {
         return monto;
     }
-//    public void setMonto(double monto) {  this.monto = monto; }
 
     public String getTipo() {
         return tipo;
     }
-//    public void setTipo(String tipo) { this.tipo = tipo; }
 
     public LocalDate getFecha() {
         return fecha;
@@ -85,22 +83,17 @@ public class CuentaCorriente {
     public void setComprobantes(List<Comprobante> comprobantes) { this.comprobantes = comprobantes; }
 
     public double getVenta() { return venta; }
-//    public void setVenta(double venta) { this.venta = venta; }
 
     public double getSaldo() { return saldo; }
     public void setSaldo(double saldo) { this.saldo = saldo; }
 
     public String getObservacion() { return observacion; }
-//    public void setObservacion(String observacion) { this.observacion = observacion; }
 
     public double getNeto() { return neto; }
-//    public void setNeto(double neto) { this.neto = neto; }
 
     public double getIva() { return iva; }
-//    public void setIva(double iva) { this.iva = iva; }
 
     public double getOtros() { return otros; }
-//    public void setOtros(double otros) { this.otros = otros; }
 
     @Override
     public String toString() {
@@ -108,15 +101,7 @@ public class CuentaCorriente {
         for (Comprobante c : comprobantes) {
             comprobantesStr.append("\n    - ").append(c.toString());
         }
-
-        return  fecha +
-                " | Tipo: " + tipo +
-                " | Monto: " + monto +
-                " | Comprobantes: " + comprobantes.size() +
-                " | Venta: " + venta +
-                " | Saldo: " + saldo +
-                " | Observacion: " + observacion +
-                comprobantesStr.toString();
+        return "Fecha: " + this.getFecha() + ", " + comprobantesStr;
     }
 
 }
